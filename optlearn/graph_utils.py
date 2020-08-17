@@ -157,3 +157,12 @@ def sample_sorted_tsp_tours(graph, tours=1, ascending=True):
 
     tours = np.array([sample_tsp_tour(graph).tolist() for num in range(tours)])
     return sort_tours_by_length(graph, tours, ascending=ascending)
+
+
+def infinite_self_weights(graph):
+    """ Sets all of the self-weights in a graph to infinity """
+
+    vertices = get_vertices(graph)
+    for vertex in vertices:
+        graph[vertex][vertex]["weight"] = 99999999999
+    return graph
