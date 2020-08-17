@@ -7,9 +7,14 @@ import numpy as np
 
 
 def get_edge_weight(graph, vertex_a, vertex_b):
-    """ Get edge weight between two vertices """
+    """ Get edge weight between two vertices, if there is no edge return np.inf """
 
-    return graph[vertex_a][vertex_b]["weight"]
+    vertex = graph[vertex_a]
+    try:
+        weight = vertex[vertex_b]["weight"]
+        return weight
+    except KeyError:
+        return np.inf
 
 
 def get_neighbours(graph, vertex):
@@ -57,7 +62,7 @@ def get_edges(graph):
     """ Get all of the graph edges in a sorted array """
 
     pair = [get_vertices(graph), ] * 2 
-    return np.array(list(itertools.product(*pair)))
+    return tuple(list(itertools.product(*pair)))
 
 
 def get_weights(graph):

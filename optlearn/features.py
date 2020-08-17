@@ -187,7 +187,6 @@ def compute_f5_edges(graph, tours, edges_in, sort=False):
         tours = graph_utils.sort_tours_by_length(graph, tours - 1) + 1
     tour_ranks = np.expand_dims(np.arange(len(tours)) + 1, 1)
     scores = np.sum(edges_in / tour_ranks, axis=0)
-    return scores
     return scores / np.max(scores)
     
 

@@ -2,14 +2,13 @@ import tsplib95
 
 import numpy as np
 
+from optlearn import graph_utils
+
 
 _write_fields = [
     "NAME",
-    "COMMENT",
     "TYPE",
     "DIMENSION",
-    # "NODE_COORD_SECTION",
-    "EDGE_WEIGHT_TYPE"
 ]
 
 
@@ -22,6 +21,13 @@ def read_file(fname):
 def write_file(optObject, fname):
     return None
 
+
+def build_string(items):
+    """ Build a string from a bunch of items, witn a newline at the end """
+
+    empty = "{} " * len(items) 
+    return empty[:-1].format(*items) + "\n"
+    
 
 class optObject():
 
@@ -38,20 +44,15 @@ class optObject():
     def get_keyword_dict(self):
         return self._object.as_keyword_dict()
 
-    def write_graph_adjacency(self, fname, edges, weights):
+    def write_edges_explicit(self, fname, edge_weight_groups):
         with open(fname, "w") as fid:
             for field in _write_fields:
                 fid.write("{}: {}\n".format(field, self.get_keyword_dict()[field]))
-            fid.write("{}\n".format("NODE_COORD_SECTION"))
-            node_dict = self.get_keyword_dict()["NODE_COORD_SECTION"]
-            for key in node_dict.keys():
-                a, b = node_dict[key]
-                fid.write("{} {} {}\n".format(key, int(a), int(b)))
-            fid.write("{}: {}\n".format("EDGE_DATA_FORMAT", "EDGE_LIST"))
-            fid.write("{}\n".format("EDGE_DATA_SECTION"))
-            for edge in edges:
-                fid.write("{} {}\n".format(*edge))
-            fid.write("-1\n")
+            fid.write("EDGE_WEIGHT_TYPE: EXPLICIT\n")
+            fid.write("EDGE_WEIGHT_FORMAT: FULL_MATRIX\n")            
+            fid.write("{}\n".format("EDGE_WEIGHT_SECTION\n"))
+            for edge_weight_group in edge_weight_groups:
+                fid.write(build_string(edge_weight_group))
             fid.write("{}\n".format("EOF"))
 
     
