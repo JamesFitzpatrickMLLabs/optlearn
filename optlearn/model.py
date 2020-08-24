@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class binaryFixer():
     def __init__(self, model, edge_fn=None, vertex_fn=None):
         self.model = model
@@ -48,6 +51,6 @@ class binaryFixer():
             weights = np.array(labels)
         if len(weights) != len(labels):
             raise ValueError("len(weights) and len(labels) should be equal!")
-        weights[labels == 0] = 9999999999
+        weights[labels == 0] = 9999999
         return weights.tolist()
 
