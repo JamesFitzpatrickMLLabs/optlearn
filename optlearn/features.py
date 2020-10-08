@@ -1,4 +1,7 @@
 from optlearn import graph_utils
+from optlearn import quadrilateral_features
+
+from optlearn.mip import mip_model
 
 import numpy as np
 
@@ -208,18 +211,63 @@ def compute_f6_edges(graph, tours, edges_in, sort=False):
     return scores / np.max(scores)
 
 
+def compute_f7_edges(graph):
+    """ Compute quadilateral frequencies for each edge """
+
+    return quadrilateral_features.compute_f7_edges(graph, 100)
+
+
+def compute_f8_edges(graph):
+    """ Compute the bet-and-run features for each edge """
+
+    problem = mip_model.tspIntegerModel(graph=graph,
+                                        formulation="dantzig",
+                                        var_type="binary",
+                                        solver="coinor")
+    problem.solve_dantzig()
+    return problem.get_varvals()
+
+    
+def compute_f9_edges(graph):
+    """ Compare the edges to the max edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return weights.flatten() / np.max(weights)
+
+
+def compute_f10_edges(graph):
+    """ Compare the edges to the min edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return (weights.flatten() - np.min(weights)) / (np.max(weights) - np.min(weights))
+
+
+def compute_f11_edges(graph):
+    """ Compare the edges to the mean edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return weights.flatten() / (np.max(weights) - np.min(weights))
+
+
+
 def compute_f_features(graph, num_tours=1, tours=None, self_max=False, sort=False):
     """ Compute all six features of Sun et al., for all edges """
 
-    if tours is None:
-        tours = graph_utils.sample_sorted_tsp_tours(graph, num_tours)
-    graph_edges = graph_utils.get_edges(graph)
-    edges_in = graph_utils.hash_edges_in_tours(graph_edges, tours - 1)
+    # if tours is None:
+    #     tours = graph_utils.sample_sorted_tsp_tours(graph, num_tours)
+    # graph_edges = graph_utils.get_edges(graph)
+    # edges_in = graph_utils.hash_edges_in_tours(graph_edges, tours - 1)
 
-    return np.vstack([compute_f1_vertices(graph, self_max=self_max),
-                      compute_f2_vertices(graph, self_max=self_max),
-                      compute_f3_vertices(graph, self_max=self_max),
-                      compute_f4_vertices(graph, self_max=self_max),
-                      compute_f5_edges(graph, tours=tours, edges_in=edges_in, sort=sort),
-                      compute_f6_edges(graph, tours=tours, edges_in=edges_in)
+    return np.vstack([
+        compute_f1_edges(graph, self_max=self_max),
+        compute_f2_edges(graph, self_max=self_max),
+        compute_f3_edges(graph, self_max=self_max),
+        compute_f4_edges(graph, self_max=self_max),
+        # compute_f5_edges(graph, tours=tours, edges_in=edges_in, sort=sort),
+        # compute_f6_edges(graph, tours=tours, edges_in=edges_in),
+        # compute_f7_edges(graph),
+        # compute_f8_edges(graph),
+        compute_f9_edges(graph),
+        compute_f10_edges(graph),
+        compute_f11_edges(graph),
     ])
