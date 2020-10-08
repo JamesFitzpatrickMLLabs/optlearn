@@ -25,6 +25,7 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
 setup(
     name='optlearn',
     version=version,
+    packages=["optlearn", "optlearn.mip"],
     install_requires=install_requires,
 )
 
