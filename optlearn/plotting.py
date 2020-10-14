@@ -1,3 +1,5 @@
+import networkx as nx
+
 import matplotlib.pyplot as plt
 
 from optlearn import graph_utils
@@ -36,6 +38,25 @@ def plot_edges(object, edges, weights, title="TSP Edges"):
     
     for (edge, weight) in zip(edges, weights):
         # print(coords, edge)
+        xs = (coords[edge[0]][0], coords[edge[1]][0])
+        ys = (coords[edge[0]][1], coords[edge[1]][1])
+        plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
+
+
+def plot_graph(graph, title="Random Graph Plot"):
+    """ Plot the given graph, randomly positioning nodes """
+
+    coords = nx.spring_layout(graph)
+
+    xs = [coords[key][0] for key in coords.keys()]
+    ys = [coords[key][1] for key in coords.keys()]
+
+    plt.scatter(xs, ys, marker="x", color="purple")
+
+    for a, b, k in zip(xs, ys, coords.keys()):
+        plt.text(a, b, k)
+
+    for (edge, weight) in zip(graph_utils.get_edges(graph), graph_utils.get_weights(graph)):
         xs = (coords[edge[0]][0], coords[edge[1]][0])
         ys = (coords[edge[0]][1], coords[edge[1]][1])
         plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
