@@ -67,11 +67,11 @@ def get_edges(graph):
     return list(graph.edges)
 
 
-def get_weights(graph):
+def get_weights(graph, weight="weight"):
     """ Get all of the graph edges in the same order as the edges """
 
     edges = get_edges(graph)
-    return [graph[edge[0]][edge[1]]["weight"] for edge in edges]
+    return [graph[edge[0]][edge[1]][weight] for edge in edges]
 
 
 def sample_tsp_tour(graph):
@@ -219,11 +219,11 @@ def to_undirected(graph):
 def check_cycle(graph):
     """ Checks for cycles in the given graph and returns one or an empty list """
 
-    return nx.find_cycle(graph)
-    # try:
-    #     return nx.find_cycle(graph)
-    # except:
-    #     return []
+    # return nx.find_cycle(graph)
+    try:
+        return nx.find_cycle(graph)
+    except:
+        return []
 
 
 def compute_mincut(graph, vertex_a, vertex_b, capacity="weight"):
