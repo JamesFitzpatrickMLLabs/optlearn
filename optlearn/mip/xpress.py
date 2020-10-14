@@ -101,18 +101,8 @@ def get_varval(problem, variable, variable_dict):
 def get_varvals(problem, variable_dict):
     """ Get the current variable values for a given problem """
 
-    variables = list(variable_dict.values())
-    return [get_varval(problem, variable, variable_dict) for variable in variables]
-
-
-def get_varvals(problem, variable_dict):
-    """ Get the current variable values for a given problem """
-
     varvals = []
-    try:
-        problem.getlpsol(varvals)
-    except:
-        varvals = problem.getSolution()
+    problem.getlpsol(varvals)
     return varvals
 
 
@@ -125,6 +115,12 @@ def add_mincut(problem, variables, variable_dict):
     arcs = len(variable_dict) - len(edges)
     m = len(vertices)
     problem.addcuts([1], "L", [m - 1], [0, columns], variables, [1] * columns)
+
+
+def get_objective_value(problem):
+    """ Get the objective value of the current solution to the problem """
+
+    return problem.getObjVal()
 
 
 _funcs = {
@@ -140,6 +136,7 @@ _funcs = {
     "get_varval": get_varval,
     "sum": xpress_sum,
     "add_mincut": add_mincut,
+    "get_objective_value": get_objective_value
 }
 
     
