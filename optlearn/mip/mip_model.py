@@ -1,3 +1,5 @@
+import time
+
 import mip as mp
 import numpy as np
 import xpress as xp
@@ -29,6 +31,18 @@ _formulations = [
     "miller",
     "commodity",
 ]
+
+
+def approx_int(number, epsilon=0.01):
+    """ Check if number is approximately integer """
+
+    return abs(number - round(number)) < abs(epsilon)
+
+
+def approx_ints(numbers, epsilon=0.01):
+    """ Check if list of number is approximately integer """
+
+    return all(approx_int(number, epsilon) for number in numbers)
 
 
 class tspProblem():
@@ -245,6 +259,12 @@ class tspProblem():
         values, names = self.get_varvals(), self.get_varnames()
         return [name for (value, name) in zip(values, names) if (value > 0 and prefix in name)]
 
+    def get_solution_varnames(self, prefix="x"):
+        """ Get all nonzero variable names from the LP solution """
+
+        values, names = self.get_solution(), self.get_varnames()
+        return [name for (value, name) in zip(values, names) if (value == 1 and prefix in name)]
+    
     def get_unit_varnames(self, prefix="x"):
         """ Get all nonzero variable names from the LP solution """
 
@@ -257,6 +277,26 @@ class tspProblem():
         values, names = self.get_varvals(), self.get_varnames()
         return [value for (value, name) in zip(values, names) if (value > 0 and prefix in name)]
 
+    def get_unit_varvals(self, prefix="x"):
+        """ Get all unit variable values from the LP solution """
+
+        values, names = self.get_varvals(), self.get_varnames()
+        return [value for (value, name) in zip(values, names) if (value >= 0.99 and prefix in name)]
+
+    def get_solution(self):
+        """ Get the current solution """
+
+        return self._funcs["get_solution"](self.problem, self.variable_dict)
+
+    def check_solution(self):
+        """ Check if a current solution exists """
+
+        try:
+            self.get_solution()
+            return True
+        except:
+            return False
+            
     def get_edges(self, prefix="x"):
         """ Get the edges of the problem graph """
 
@@ -275,6 +315,12 @@ class tspProblem():
         varnames = self.get_unit_varnames(prefix=prefix)
         return [mip_utils.get_edge_from_varname(varname) for varname in varnames]
 
+    def get_solution_edges(self, prefix="x"):
+        """ Get the nonzero edge tuples from the LP solution """
+
+        varnames = self.get_solution_varnames(prefix=prefix)
+        return [mip_utils.get_edge_from_varname(varname) for varname in varnames]
+    
     def check_integral_solution(self):
         """ Check if the solution is integral """
 
@@ -317,42 +363,68 @@ class tspProblem():
         
         for edge in self.get_edges(prefix="x"):
             self.set_mincut_constraint(*edge)
-                        
-    def check_tour(self):
+
+    def check_tour_other(self):
         """ Checks if the current solution gives a valid tour """
 
-        values = self.get_varvals()
-        names = self.get_varnames()
-        edges = [mip_utils.get_edge_from_varname(name) for name in names]
-        bunches = [(*edge, {"weight": value}) for (edge, value) in zip(edges, values)]
+        varvals = self.get_varvals()
+        edges = self.get_edges()
+        vals = [1 if varval > 0 else 0 for varval in varvals ]
+        edges = [edge for (edge, varval) in zip(edges, varvals) if varval == 1]
+
+        graph = constraints.initialise_mincut_graph(self._is_symmetric)
+        graph.add_edges_from(edges)
         
-        graph = nx.Graph()
-        graph.add_edges_from(bunches)
+        cycle = graph_utils.check_cycle(graph)
+
+        return len(cycle) == len(self.vertices)
+
+    # def check_tour(self):
+    #     """ Checks if the current solution gives a valid tour """
+
+    #     values = self.get_varvals()
+    #     names = self.get_varnames()
+    #     edges = [mip_utils.get_edge_from_varname(name) for name in names]
+    #     bunches = [(*edge, {"weight": value}) for (edge, value) in zip(edges, values)]
         
-        cut_values = graph_utils.compute_unique_mincut_values(graph)
-        values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
-        return len(values) == 0
+    #     graph = nx.Graph()
+    #     graph.add_edges_from(bunches)
         
-    def solve(self, kwargs=None):
+    #     cut_values = graph_utils.compute_unique_mincut_values(graph)
+    #     values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
+    #     return len(values) == 0
+        
+    def solve(self, kwargs={}):
         """ Solve to optimality if possible """
 
+        self._time = 0
+        self._nodes = 0
+        
         if self.formulation == "dantzig":
             if self._solver == "coinor":
                 self.solve_dantzig()
             if self._solver == "xpress":
                 
                 def check_tour(problem, graph, isheuristic, cutoff):
-                    res = bool(np.logical_not(self.check_tour()))
+                    start = time.time()
+                    res = bool(np.logical_not(self.check_tour_other()))
+                    end = time.time()
+                    self._time += (end - start)
                     return (res, None)
 
                 def add_cuts(problem, graph):
                     self.set_mincut_constraints()
                     return 0
+
+                def count_nodes(problem, object):
+                    self._nodes += 1
                     
                 self.problem.addcbpreintsol(check_tour, None, 1)
                 self.problem.addcboptnode(add_cuts, None, 1)
+                self.problem.addcbprenode(count_nodes, None, 1)
 
-                self.problem.solve()
+                self.problem.solve(**kwargs)
+                print("Total checking time: ", self._time)
                         
     def get_objective_value(self):
         """ Get the objective value of the current solution """
