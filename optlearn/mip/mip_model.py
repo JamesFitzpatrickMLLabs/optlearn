@@ -308,9 +308,7 @@ class tspProblem():
         uniques = np.unique(edges)
         
         if variables is not None:
-            # self._funcs["add_mincut"](self.problem, variables, self.variable_dict)
-            lhs, rhs = self._funcs["sum"](variables), len(uniques) - 1
-            self._funcs["set_constraint"](self.problem, lhs, rhs, "<=")
+            self._funcs["add_mincut"](self.problem, variables, self.variable_dict)
         
     def set_mincut_constraints(self):
         """ Build mincut constraints """
@@ -319,79 +317,44 @@ class tspProblem():
         
         for edge in self.get_edges(prefix="x"):
             self.set_mincut_constraint(*edge)
-            
-    def get_cycle(self):
-        """ Get a cycle in the solution, if one exists """
-
-        graph = nx.Graph()
-        edges = self.get_unit_edges()
-        graph.add_edges_from(edges)
-        print("Cycle next!\n")
-        cycle = graph_utils.check_cycle(graph) 
-        print(cycle)
-        return cycle
-            
+                        
     def check_tour(self):
         """ Checks if the current solution gives a valid tour """
 
-        cycle = self.get_cycle()
-        return len(cycle) < len(self.vertices)
-    
-    
-    # def solve(self, kwargs=None):
-    #     """ Solve to optimality if possible """
+        values = self.get_varvals()
+        names = self.get_varnames()
+        edges = [mip_utils.get_edge_from_varname(name) for name in names]
+        bunches = [(*edge, {"weight": value}) for (edge, value) in zip(edges, values)]
+        
+        graph = nx.Graph()
+        graph.add_edges_from(bunches)
+        
+        cut_values = graph_utils.compute_unique_mincut_values(graph)
+        values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
+        return len(values) == 0
+        
+    def solve(self, kwargs=None):
+        """ Solve to optimality if possible """
 
-    #     if self.formulation == "dantzig":
-    #         if self._solver == "coinor":
-    #             self.solve_dantzig()
-    #         if self._solver == "xpress":
+        if self.formulation == "dantzig":
+            if self._solver == "coinor":
+                self.solve_dantzig()
+            if self._solver == "xpress":
                 
-    #             def check_tour(problem, graph, isheuristic, cutoff):
-    #                 res = self.check_tour()
-    #                 return (res, None)
+                def check_tour(problem, graph, isheuristic, cutoff):
+                    res = bool(np.logical_not(self.check_tour()))
+                    return (res, None)
 
-    #             def add_cuts(problem, graph):
-    #                 self.set_mincut_constraints()
-    #                 return False
+                def add_cuts(problem, graph):
+                    self.set_mincut_constraints()
+                    return 0
                     
-    #             self.problem.addcbpreintsol(check_tour, None, 1)
-    #             self.problem.addcboptnode(add_cuts, None, 1)
+                self.problem.addcbpreintsol(check_tour, None, 1)
+                self.problem.addcboptnode(add_cuts, None, 1)
 
-    #             self.problem.solve()
+                self.problem.solve()
                         
+    def get_objective_value(self):
+        """ Get the objective value of the current solution """
 
-
-
-
-from optlearn import plotting
-import matplotlib.pyplot as plt
-
-
-# tsp_file = "/home/james/dj38.tsp"
-tsp_file = "/home/james/att48.tsp"
-object = io_utils.optObject().read_from_file(tsp_file)
-# graph = object.get_graph().to_undirected()
-graph = object.get_graph().to_directed()
-graph = graph_utils.delete_self_weights(graph)
-
-
-problem = tspProblem(graph=graph,
-                     var_type="binary",
-                     formulation="dantzig",
-                     solver="xpress",
-                     verbose=True)
-
-problem.problem.solve()
-
-for i in range(5):
-    # problem.perform_relaxation()
-    problem.set_mincut_constraints()
-    problem.problem.solve()
-
-
-problem.problem.solve()
-    
-edges = graph.edges
-vals = problem.problem.getSolution()
-plotting.plot_edges(object, edges, vals)
-plt.show()
+        return self._funcs["get_objective_value"](self.problem)
