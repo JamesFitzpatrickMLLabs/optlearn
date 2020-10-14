@@ -106,6 +106,12 @@ def get_varvals(problem, variable_dict):
     return varvals
 
 
+def get_solution(problem, variable_dict):
+    """ Get the current variable values for a given problem """
+
+    return problem.getSolution()
+
+
 def add_mincut(problem, variables, variable_dict):
     """ Add a mincut constraint to the constraint matrix via callback """
 
@@ -133,6 +139,7 @@ _funcs = {
     "solve_problem": solve_problem,
     "get_varnames": get_varnames,
     "get_varvals": get_varvals,
+    "get_solution": get_solution,
     "get_varval": get_varval,
     "sum": xpress_sum,
     "add_mincut": add_mincut,
