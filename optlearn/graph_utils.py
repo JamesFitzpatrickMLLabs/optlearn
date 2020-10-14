@@ -226,6 +226,28 @@ def check_cycle(graph):
     #     return []
 
 
+def compute_mincut(graph, vertex_a, vertex_b, capacity="weight"):
+    """ Compute the mincut for the given graph """
+
+    return nx.algorithms.flow.minimum_cut(graph, vertex_a, vertex_b, capacity=capacity)
+
+
+def compute_mincut_values(graph, capacity="weight"):
+    """ Compute the mincut values for each edge of the given graph """
+
+    mincut_values = []
+    for edge in graph.edges:
+        mincut_values.append(compute_mincut(graph, *edge, capacity)[0])
+    return mincut_values
+
+
+def compute_unique_mincut_values(graph, capacity="weight"):
+    """ Compute the unique mincut values of the given graph """
+
+    mincut_values = compute_mincut_values(graph, capacity=capacity)
+    return np.unique(mincut_values)
+
+
 def build_graph_from_edges(edges, weights=None, symmetric=True):
     """ Using the given edges, build a graph with unit weights """
 
