@@ -27,8 +27,14 @@ def get_mincut_variables(graph, vertex_a, vertex_b, variable_dict, is_symmetric=
     cut_value, (set_a, set_b) = nx.minimum_cut(graph, vertex_a, vertex_b)
     
     if cut_value <= 0.99 + is_symmetric * 1:
+        
+        if len(set_a) <= len(set_b):
+            set_c = set_a
+        else:
+            set_c = set_b
+        
         keys = variable_dict.keys()
-        keys = [key for key in keys if (mip_utils.get_variable_tuple(key)[0] in set_a and
-                                        mip_utils.get_variable_tuple(key)[1] in set_a)]
+        keys = [key for key in keys if (mip_utils.get_variable_tuple(key)[0] in set_c and
+                                        mip_utils.get_variable_tuple(key)[1] in set_c)]
         return [variable_dict[key] for key in keys]
     return None
