@@ -264,7 +264,7 @@ class tspProblem():
 
         values, names = self.get_solution(), self.get_varnames()
         return [name for (value, name) in zip(values, names) if (value == 1 and prefix in name)]
-    
+
     def get_unit_varnames(self, prefix="x"):
         """ Get all nonzero variable names from the LP solution """
 
@@ -369,7 +369,7 @@ class tspProblem():
 
         varvals = self.get_varvals()
         edges = self.get_edges()
-        vals = [1 if varval > 0 else 0 for varval in varvals ]
+        vals = [1 if varval > 0 else 0 for varval in varvals]
         edges = [edge for (edge, varval) in zip(edges, varvals) if varval == 1]
 
         graph = constraints.initialise_mincut_graph(self._is_symmetric)
@@ -379,52 +379,39 @@ class tspProblem():
 
         return len(cycle) == len(self.vertices)
 
-    # def check_tour(self):
-    #     """ Checks if the current solution gives a valid tour """
+    def check_tour(self):
+        """ Checks if the current solution gives a valid tour """
 
-    #     values = self.get_varvals()
-    #     names = self.get_varnames()
-    #     edges = [mip_utils.get_edge_from_varname(name) for name in names]
-    #     bunches = [(*edge, {"weight": value}) for (edge, value) in zip(edges, values)]
+        varvals = self.get_varvals()
+        edges = self.get_edges()
+        bunches = [(*edge, {"weight": varval}) for (edge, varval) in zip(edges, varvals)]
+        graph = nx.Graph()
+        graph.add_edges_from(bunches)
         
-    #     graph = nx.Graph()
-    #     graph.add_edges_from(bunches)
-        
-    #     cut_values = graph_utils.compute_unique_mincut_values(graph)
-    #     values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
-    #     return len(values) == 0
+        cut_values = graph_utils.compute_unique_mincut_values(graph)
+        values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
+        return len(values) == 0
         
     def solve(self, kwargs={}):
         """ Solve to optimality if possible """
-
-        self._time = 0
-        self._nodes = 0
         
         if self.formulation == "dantzig":
             if self._solver == "coinor":
-                self.solve_dantzig()
+                print("Not implemented...")
             if self._solver == "xpress":
                 
                 def check_tour(problem, graph, isheuristic, cutoff):
-                    start = time.time()
-                    res = bool(np.logical_not(self.check_tour_other()))
-                    end = time.time()
-                    self._time += (end - start)
-                    return (res, None)
+                    ser = self.check_tour_other()
+                    return (ser, None)
 
                 def add_cuts(problem, graph):
                     self.set_mincut_constraints()
                     return 0
-
-                def count_nodes(problem, object):
-                    self._nodes += 1
                     
                 self.problem.addcbpreintsol(check_tour, None, 1)
                 self.problem.addcboptnode(add_cuts, None, 1)
-                self.problem.addcbprenode(count_nodes, None, 1)
 
-                self.problem.solve(**kwargs)
-                print("Total checking time: ", self._time)
+                self.problem.solve()
                         
     def get_objective_value(self):
         """ Get the objective value of the current solution """
