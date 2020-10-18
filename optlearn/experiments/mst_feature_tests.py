@@ -16,7 +16,7 @@ model = mst_model.mstSparsifier()
 
 ones, twos, threes, fours, fives = [], [], [], [], []
 
-for num, file in enumerate(files[:30]):
+for num, file in enumerate(files):
     object = io_utils.optObject().read_from_file(file)
     graph = object.get_graph()
     graph = graph_utils.delete_self_weights(graph)
