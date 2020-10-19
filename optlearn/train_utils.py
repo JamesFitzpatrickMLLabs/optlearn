@@ -284,9 +284,12 @@ class createTrainingFeatures(buildFeatures):
         self.directory_step()
         self.print_status(self.verbose)
         self._tracker["Features Status"] = "Checking/Building/Writing"
-        for name in self._problem_dict.keys():
+        for num, name in enumerate(self._problem_dict.keys()):
             self._tracker["Current Problem"] = "{}".format(name)
             self.data_steps(name)
+            if self.verbose:
+                length = len(self._problem_dict.keys())
+                print("Problem {} of {} completed".format(num+1, length))
         self._tracker["Current Problem"] = "N/A"
         self._tracker["Features Status"] = "Checked/Built/Written"
         self.print_status(self.verbose)
