@@ -140,12 +140,12 @@ class createTrainingFeatures(buildFeatures):
         if solution_fname is not None:
             return self.compute_labels_from_solution(solution_fname)
         else:
-            return self.compute_labels_from_problem()
+            return self.compute_labels_from_problem(problem_fname)
 
     def compute_labels_from_problem(self):
         """ Using the problem file, compute the labels """
         
-        tour = cc_solve.solution_from_path(self._object.get_graph()).tour
+        tour = cc_solve.solution_from_path(problem_fname).tour
         edges = graph_utils.get_edges(self._object.get_graph())
         return graph_utils.check_edges_in_tour(edges, tour)
 
