@@ -142,7 +142,7 @@ class createTrainingFeatures(buildFeatures):
         else:
             return self.compute_labels_from_problem(problem_fname)
 
-    def compute_labels_from_problem(self):
+    def compute_labels_from_problem(self, problem_fname):
         """ Using the problem file, compute the labels """
         
         tour = cc_solve.solution_from_path(problem_fname).tour
