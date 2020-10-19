@@ -250,24 +250,21 @@ def compute_f11_edges(graph):
 
 
 
-def compute_f_features(graph, num_tours=1, tours=None, self_max=False, sort=False):
-    """ Compute all six features of Sun et al., for all edges """
+functions = {
+    "compute_f1_edges": compute_f1_edges,
+    "compute_f2_edges": compute_f2_edges,
+    "compute_f3_edges": compute_f3_edges,
+    "compute_f4_edges": compute_f4_edges,
+    "compute_f5_edges": compute_f5_edges,
+    "compute_f6_edges": compute_f6_edges,
+    "compute_f7_edges": compute_f7_edges,
+    "compute_f8_edges": compute_f8_edges,
+    "compute_f9_edges": compute_f9_edges,
+    "compute_f10_edges": compute_f10_edges,
+    "compute_f11_edges": compute_f11_edges,
+    "compute_f1_vertices": compute_f1_vertices,
+    "compute_f2_vertices": compute_f2_vertices,
+    "compute_f3_vertices": compute_f3_vertices,
+    "compute_f4_vertices": compute_f4_vertices,
+    }
 
-    # if tours is None:
-    #     tours = graph_utils.sample_sorted_tsp_tours(graph, num_tours)
-    # graph_edges = graph_utils.get_edges(graph)
-    # edges_in = graph_utils.hash_edges_in_tours(graph_edges, tours - 1)
-
-    return np.vstack([
-        compute_f1_edges(graph, self_max=self_max),
-        compute_f2_edges(graph, self_max=self_max),
-        compute_f3_edges(graph, self_max=self_max),
-        compute_f4_edges(graph, self_max=self_max),
-        # compute_f5_edges(graph, tours=tours, edges_in=edges_in, sort=sort),
-        # compute_f6_edges(graph, tours=tours, edges_in=edges_in),
-        # compute_f7_edges(graph),
-        # compute_f8_edges(graph),
-        compute_f9_edges(graph),
-        compute_f10_edges(graph),
-        compute_f11_edges(graph),
-    ])
