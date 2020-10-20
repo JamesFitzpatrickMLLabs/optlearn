@@ -260,9 +260,7 @@ class createTrainingFeatures(buildFeatures):
 
         data = self.compute_labels(problem_fname, solution_fname)
         filename = os.path.join(self.parent_directory, "solutions")
-        print(filename)
         filename = os.path.join(filename, get_name_stem(name)) + ".npy"
-        print(filename)
         if not self.check_file_with_overrides(filename):
             self.write_to_npy(filename, data)
 
