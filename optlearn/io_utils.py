@@ -52,12 +52,21 @@ def read_file_into_list(fname):
     return lines
 
 
+def find_substring_in_stringlist(stringlist, substring):
+    """ Find the first time a substring appears in a list of strings """
+
+    for num, item in enumerate(stringlist):
+        if substring in item:
+            return num
+    raise ValueError("Substring not found in the stringlist!")
+
+
 def read_solution_from_file(fname):
     """ Read and parse a solution file """
 
     lines = read_file_into_list(fname)
-    tour_index = lines.index("TOUR_SECTION\n")
-    minus_index = lines.index("-1\n")
+    tour_index = find_substring_in_stringlist(lines, "TOUR_SECTION")
+    minus_index = find_substring_in_stringlist(lines, "-1")
     lines = lines[tour_index+1:minus_index]
     return [int(item[:-1]) for item in lines]
 
