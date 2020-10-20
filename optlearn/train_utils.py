@@ -275,8 +275,8 @@ class createTrainingFeatures(buildFeatures):
             filename = self.build_filename(function_name, namestem)
             self.feature_step(function_name, problem_fname, filename)
             self._check_dict[name]["problem"] = True
-            self.label_step(problem_fname, solution_fname, name)
-            self._check_dict[name]["solution"] = True
+        self.label_step(problem_fname, solution_fname, name)
+        self._check_dict[name]["solution"] = True
             
     def data_create(self):
         """ Perform the data creation """
