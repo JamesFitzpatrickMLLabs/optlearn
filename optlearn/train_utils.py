@@ -133,6 +133,7 @@ class createTrainingFeatures(buildFeatures):
 
         self._object = io_utils.optObject()
         self._object.read_problem_from_file(problem_fname)
+        self._graph = self._object.get_graph()
         
     def compute_labels(self, problem_fname, solution_fname):
         """ Compute the labels for the graph edges """
@@ -146,14 +147,14 @@ class createTrainingFeatures(buildFeatures):
         """ Using the problem file, compute the labels """
         
         tour = cc_solve.solution_from_path(problem_fname).tour
-        edges = graph_utils.get_edges(self._object.get_graph())
+        edges = graph_utils.get_edges(self._graph)
         return graph_utils.check_edges_in_tour(edges, tour)
 
     def compute_labels_from_solution(self, solution_fname):
         """ Using the solution file, read the solution in """
 
         tour = self._object.read_solution_from_file(solution_fname)
-        edges = graph_utils.get_edges(self._object.get_graph())
+        edges = graph_utils.get_edges(self._graph)
         return graph_utils.check_edges_in_tour(edges, tour)
 
     def write_to_npy(self, fname, data):
@@ -251,7 +252,7 @@ class createTrainingFeatures(buildFeatures):
         """ Build the given feature for the given problem """
 
         self.load_object(problem_fname)
-        data = features.functions[function_name](self._object.get_graph())
+        data = features.functions[function_name](self._graph)
         if not self.check_file_with_overrides(filename):
             self.write_to_npy(filename, data)
 
