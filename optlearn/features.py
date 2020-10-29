@@ -1,6 +1,8 @@
 from optlearn import graph_utils
-from optlearn import quadrilateral_features
 
+from optlearn.quad import quad_features
+from optlearn.mst import mst_features
+from optlearn.mst import mst_model
 from optlearn.mip import mip_model
 
 import numpy as np
@@ -211,10 +213,14 @@ def compute_f6_edges(graph, tours, edges_in, sort=False):
     return scores / np.max(scores)
 
 
-def compute_f7_edges(graph):
+def compute_f7_edges(graph, iterations="auto"):
     """ Compute quadilateral frequencies for each edge """
 
-    return quadrilateral_features.compute_f7_edges(graph, 100)
+    if iterations == "auto":
+        iterations = graph_utils.get_order(graph)
+    model = mst_model.mstSparsifier()
+    edges = mst_features.extract_edges(model, graph)
+    return quad_features.fast_quadrilateral_frequencies(graph, edges, iterations)
 
 
 def compute_f8_edges(graph):
@@ -227,26 +233,40 @@ def compute_f8_edges(graph):
     problem.solve_dantzig()
     return problem.get_varvals()
 
-    
+
 def compute_f9_edges(graph):
+    """ Indicator features from the MWST extraction method  """
+
+    model = mst_model.mstSparsifier()
+    return mst_features.build_prune_indicators(model, graph)
+
+    
+def compute_f10_edges(graph):
     """ Compare the edges to the max edge value """
 
     weights = np.array(graph_utils.get_weights(graph))
     return weights.flatten() / np.max(weights)
 
 
-def compute_f10_edges(graph):
+def compute_f11_edges(graph):
     """ Compare the edges to the min edge value """
 
     weights = np.array(graph_utils.get_weights(graph))
     return (weights.flatten() - np.min(weights)) / (np.max(weights) - np.min(weights))
 
 
-def compute_f11_edges(graph):
+def compute_f12_edges(graph):
     """ Compare the edges to the mean edge value """
 
     weights = np.array(graph_utils.get_weights(graph))
     return weights.flatten() / (np.max(weights) - np.min(weights))
+
+
+def compute_f13_edges(graph):
+    """ Include a feature that informs the order of the graph """
+
+    order = graph_utils.get_order(graph)
+    return np.log(10) / np.log(order)
 
 
 
@@ -262,6 +282,8 @@ functions = {
     "compute_f9_edges": compute_f9_edges,
     "compute_f10_edges": compute_f10_edges,
     "compute_f11_edges": compute_f11_edges,
+    "compute_f12_edges": compute_f11_edges,
+    "compute_f13_edges": compute_f11_edges,
     "compute_f1_vertices": compute_f1_vertices,
     "compute_f2_vertices": compute_f2_vertices,
     "compute_f3_vertices": compute_f3_vertices,
