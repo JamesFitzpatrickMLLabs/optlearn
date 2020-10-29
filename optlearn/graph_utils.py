@@ -1,11 +1,28 @@
-import itertools
-import networkx
 import copy
 
 import random
 
 import numpy as np
 import networkx as nx
+
+
+def get_order(graph):
+    """ Get the order of a graph """
+
+    return len(graph.nodes)
+
+
+def get_size(graph):
+    """ Get the size of the graph """
+
+    return len(graph.edges)
+
+
+def get_min_vertex(graph):
+    """ Get the value of the minimum vertex """
+
+    return np.min(graph.nodes)
+
 
 def get_edge_weight(graph, vertex_a, vertex_b):
     """ Get edge weight between two vertices, if there is no edge return np.inf """
@@ -18,6 +35,12 @@ def get_edge_weight(graph, vertex_a, vertex_b):
         return np.inf
 
 
+def get_edges_weights(graph, edges):
+    """ Get the weights between the given edges """
+
+    return [get_edge_weight(graph, *edge) for edge in edges]
+
+    
 def get_neighbours(graph, vertex):
     """ Get neighbours of vertex (including self) """
 
@@ -62,8 +85,6 @@ def get_vertices(graph):
 def get_edges(graph):
     """ Get all of the graph edges in a sorted array """
 
-    # pair = [get_vertices(graph), ] * 2 
-    # return tuple(list(itertools.product(*pair)))
     return list(graph.edges)
 
 
@@ -248,6 +269,18 @@ def compute_unique_mincut_values(graph, capacity="weight"):
     return np.unique(mincut_values)
 
 
+def check_graph(graph):
+    """ Check if the given graph is undirected """
+
+    return type(graph) == nx.Graph
+
+
+def check_digraph(graph):
+    """ Check of the graph is a directed graph """
+
+    return type(graph) == nx.DiGraph()
+
+
 def build_graph_from_edges(edges, weights=None, symmetric=True):
     """ Using the given edges, build a graph with unit weights """
 
@@ -260,3 +293,44 @@ def build_graph_from_edges(edges, weights=None, symmetric=True):
     graph.add_edges_from(edges)
 
     return graph
+
+
+def compute_vector_index_symmetric(edge, order, min_vertex):
+    """ Compute the index of the given edge in the edge vector """
+    
+    (i, j) = edge
+
+    if i >= j:
+        raise ValueError("Indices not symmetric: {}, {}".format(i, j))
+    
+    vertical_offset = np.sum([order - k + (min_vertex - 1)
+                              for k in range(1 - (1 - min_vertex), i)])
+    horizontal_offset = j - i - 1 
+    return int(vertical_offset + horizontal_offset)
+
+
+def compute_vector_index(edge, order, min_vertex, symmetric=True):
+    """ Compute the index of the given edge in the edge vector """
+
+    if symmetric:
+        return compute_vector_index_symmetric(edge, order, min_vertex)
+    else:
+        raise Exception("Assymetric edge index computer not implemented!")
+        
+
+def compute_indicator_vector(graph, edges):
+    """ Build an indicator vector of length size(graph) for the given edges """
+
+    symmetric = check_graph(graph)
+    size, order = get_size(graph), get_order(graph)
+    min_vertex = get_min_vertex(graph)
+    indices = [compute_vector_index(edge, order, min_vertex, symmetric) for edge in edges]
+    return build_indicator_vector(size, indices)
+
+
+def build_indicator_vector(length, nonzeros):
+    """ Build an indicator vector with the nonzero indices specified """
+
+    vector = np.zeros((length))
+    vector[nonzeros] = 1
+    return vector
