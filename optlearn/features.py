@@ -1,5 +1,10 @@
 from optlearn import graph_utils
 
+from optlearn.quad import quad_features
+from optlearn.mst import mst_features
+from optlearn.mst import mst_model
+from optlearn.mip import mip_model
+
 import numpy as np
 
 
@@ -187,7 +192,6 @@ def compute_f5_edges(graph, tours, edges_in, sort=False):
         tours = graph_utils.sort_tours_by_length(graph, tours - 1) + 1
     tour_ranks = np.expand_dims(np.arange(len(tours)) + 1, 1)
     scores = np.sum(edges_in / tour_ranks, axis=0)
-    return scores
     return scores / np.max(scores)
     
 
@@ -209,18 +213,80 @@ def compute_f6_edges(graph, tours, edges_in, sort=False):
     return scores / np.max(scores)
 
 
-def compute_f_features(graph, num_tours=1, tours=None, self_max=False, sort=False):
-    """ Compute all six features of Sun et al., for all edges """
+def compute_f7_edges(graph, iterations="auto"):
+    """ Compute quadilateral frequencies for each edge """
 
-    if tours is None:
-        tours = graph_utils.sample_sorted_tsp_tours(graph, num_tours)
-    graph_edges = graph_utils.get_edges(graph)
-    edges_in = graph_utils.hash_edges_in_tours(graph_edges, tours - 1)
+    if iterations == "auto":
+        iterations = graph_utils.get_order(graph)
+    model = mst_model.mstSparsifier()
+    edges = mst_features.extract_edges(model, graph)
+    return quad_features.fast_quadrilateral_frequencies(graph, edges, iterations)
 
-    return np.vstack([compute_f1_vertices(graph, self_max=self_max),
-                      compute_f2_vertices(graph, self_max=self_max),
-                      compute_f3_vertices(graph, self_max=self_max),
-                      compute_f4_vertices(graph, self_max=self_max),
-                      compute_f5_edges(graph, tours=tours, edges_in=edges_in, sort=sort),
-                      compute_f6_edges(graph, tours=tours, edges_in=edges_in)
-    ])
+
+def compute_f8_edges(graph):
+    """ Compute the bet-and-run features for each edge """
+
+    problem = mip_model.tspIntegerModel(graph=graph,
+                                        formulation="dantzig",
+                                        var_type="binary",
+                                        solver="coinor")
+    problem.solve_dantzig()
+    return problem.get_varvals()
+
+
+def compute_f9_edges(graph):
+    """ Indicator features from the MWST extraction method  """
+
+    model = mst_model.mstSparsifier()
+    return mst_features.build_prune_indicators(model, graph)
+
+    
+def compute_f10_edges(graph):
+    """ Compare the edges to the max edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return weights.flatten() / np.max(weights)
+
+
+def compute_f11_edges(graph):
+    """ Compare the edges to the min edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return (weights.flatten() - np.min(weights)) / (np.max(weights) - np.min(weights))
+
+
+def compute_f12_edges(graph):
+    """ Compare the edges to the mean edge value """
+
+    weights = np.array(graph_utils.get_weights(graph))
+    return weights.flatten() / (np.max(weights) - np.min(weights))
+
+
+def compute_f13_edges(graph):
+    """ Include a feature that informs the order of the graph """
+
+    order = graph_utils.get_order(graph)
+    return np.log(10) / np.log(order)
+
+
+
+functions = {
+    "compute_f1_edges": compute_f1_edges,
+    "compute_f2_edges": compute_f2_edges,
+    "compute_f3_edges": compute_f3_edges,
+    "compute_f4_edges": compute_f4_edges,
+    "compute_f5_edges": compute_f5_edges,
+    "compute_f6_edges": compute_f6_edges,
+    "compute_f7_edges": compute_f7_edges,
+    "compute_f8_edges": compute_f8_edges,
+    "compute_f9_edges": compute_f9_edges,
+    "compute_f10_edges": compute_f10_edges,
+    "compute_f11_edges": compute_f11_edges,
+    "compute_f12_edges": compute_f11_edges,
+    "compute_f13_edges": compute_f11_edges,
+    "compute_f1_vertices": compute_f1_vertices,
+    "compute_f2_vertices": compute_f2_vertices,
+    "compute_f3_vertices": compute_f3_vertices,
+    "compute_f4_vertices": compute_f4_vertices,
+    }
+

@@ -2,14 +2,13 @@ import tsplib95
 
 import numpy as np
 
+from optlearn import graph_utils
+
 
 _write_fields = [
     "NAME",
-    "COMMENT",
     "TYPE",
     "DIMENSION",
-    # "NODE_COORD_SECTION",
-    "EDGE_WEIGHT_TYPE"
 ]
 
 
@@ -23,40 +22,21 @@ def write_file(optObject, fname):
     return None
 
 
-class optObject():
+def build_string(items):
+    """ Build a string from a bunch of items, witn a newline at the end """
 
-    def read_from_file(self, fname):
-        self._object = read_file(fname)
-        return self
+    empty = "{} " * len(items) 
+    return empty[:-1].format(*items) + "\n"
 
-    def get_graph(self):
-        return self._object.get_graph()
 
-    def get_dict(self):
-        return self._object.as_dict()
+def load_npy_file(path):
+    """ Load a single npy file """
 
-    def get_keyword_dict(self):
-        return self._object.as_keyword_dict()
+    return np.load(path)
 
-    def write_graph_adjacency(self, fname, edges, weights):
-        with open(fname, "w") as fid:
-            for field in _write_fields:
-                fid.write("{}: {}\n".format(field, self.get_keyword_dict()[field]))
-            fid.write("{}\n".format("NODE_COORD_SECTION"))
-            node_dict = self.get_keyword_dict()["NODE_COORD_SECTION"]
-            for key in node_dict.keys():
-                a, b = node_dict[key]
-                fid.write("{} {} {}\n".format(key, int(a), int(b)))
-            fid.write("{}: {}\n".format("EDGE_DATA_FORMAT", "EDGE_LIST"))
-            fid.write("{}\n".format("EDGE_DATA_SECTION"))
-            for edge in edges:
-                fid.write("{} {}\n".format(*edge))
-            fid.write("-1\n")
-            fid.write("{}\n".format("EOF"))
 
-    
 def load_npz_data(path):
-    """ Load a single npz traininf file """
+    """ Load a single npz training file """
     with np.load(path) as npz:
         return npz["X"], npz["y"]
 
@@ -64,7 +44,85 @@ def load_npz_data(path):
 def load_npz_datas_for_training(paths):
     """ Load many npz training files into X, y arrays """
     
-    pairs = [[*load_npz_data(path)] for path in paths]
+    pairs = [load_npz_data(path) for path in paths]
     X = np.vstack([pair[0] for pair in pairs])
     y = np.concatenate([pair[1] for pair in pairs])
     return X, y
+
+
+def read_file_into_list(fname):
+    """ Read a file into a list """
+
+    with open(fname) as f:
+        lines = f.readlines()
+    return lines
+
+
+def find_substring_in_stringlist(stringlist, substring):
+    """ Find the first time a substring appears in a list of strings """
+
+    for num, item in enumerate(stringlist):
+        if substring in item:
+            return num
+    raise ValueError("Substring not found in the stringlist!")
+
+
+def read_solution_from_file(fname):
+    """ Read and parse a solution file """
+
+    lines = read_file_into_list(fname)
+    tour_index = find_substring_in_stringlist(lines, "TOUR_SECTION")
+    minus_index = find_substring_in_stringlist(lines, "-1")
+    lines = lines[tour_index+1:minus_index]
+    return [int(item[:-1]) for item in lines]
+
+
+class optObject():
+
+    def read_problem_from_file(self, fname):
+        self._problem = read_file(fname)
+        return self
+
+    def read_solution_from_file(self, fname, symmetric=True):
+        tour = read_solution_from_file(fname)
+        edges = graph_utils.get_tour_edges(tour, symmetric=symmetric)
+        self._solution = edges
+        return tour
+
+    def _check_graph(self):
+        """ Check if the graph is already set """
+
+        return hasattr(self, "_graph")
+
+    def _set_graph(self):
+        """ Set the graph """
+
+        self._graph = self._problem.get_graph()
+        self._graph = graph_utils.delete_self_weights(self._graph)
+
+    def get_graph(self):
+        """ Get the graph """
+
+        if not self._check_graph():
+            self._set_graph()
+        return self._graph
+
+    def get_solution(self):
+        return self._solution
+
+    def get_dict(self):
+        return self._problem.as_dict()
+
+    def get_keyword_dict(self):
+        return self._problem.as_keyword_dict()
+
+    def write_edges_explicit(self, fname, edge_weight_groups):
+        with open(fname, "w") as fid:
+            for field in _write_fields:
+                fid.write("{}: {}\n".format(field, self.get_keyword_dict()[field]))
+            fid.write("EDGE_WEIGHT_TYPE: EXPLICIT\n")
+            fid.write("EDGE_WEIGHT_FORMAT: FULL_MATRIX\n")            
+            fid.write("{}\n".format("EDGE_WEIGHT_SECTION\n"))
+            for edge_weight_group in edge_weight_groups:
+                fid.write(build_string(edge_weight_group))
+            fid.write("{}\n".format("EOF"))

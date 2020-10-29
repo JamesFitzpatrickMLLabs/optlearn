@@ -1,17 +1,46 @@
-import itertools
-import networkx
+import copy
 
 import random
 
 import numpy as np
+import networkx as nx
+
+
+def get_order(graph):
+    """ Get the order of a graph """
+
+    return len(graph.nodes)
+
+
+def get_size(graph):
+    """ Get the size of the graph """
+
+    return len(graph.edges)
+
+
+def get_min_vertex(graph):
+    """ Get the value of the minimum vertex """
+
+    return np.min(graph.nodes)
 
 
 def get_edge_weight(graph, vertex_a, vertex_b):
-    """ Get edge weight between two vertices """
+    """ Get edge weight between two vertices, if there is no edge return np.inf """
 
-    return graph[vertex_a][vertex_b]["weight"]
+    vertex = graph[vertex_a]
+    try:
+        weight = vertex[vertex_b]["weight"]
+        return weight
+    except KeyError:
+        return np.inf
 
 
+def get_edges_weights(graph, edges):
+    """ Get the weights between the given edges """
+
+    return [get_edge_weight(graph, *edge) for edge in edges]
+
+    
 def get_neighbours(graph, vertex):
     """ Get neighbours of vertex (including self) """
 
@@ -56,15 +85,14 @@ def get_vertices(graph):
 def get_edges(graph):
     """ Get all of the graph edges in a sorted array """
 
-    pair = [get_vertices(graph), ] * 2 
-    return np.array(list(itertools.product(*pair)))
+    return list(graph.edges)
 
 
-def get_weights(graph):
+def get_weights(graph, weight="weight"):
     """ Get all of the graph edges in the same order as the edges """
 
-    vertices = get_vertices(graph)
-    return [get_edge_weights(graph, vertex) for vertex in vertices]
+    edges = get_edges(graph)
+    return [graph[edge[0]][edge[1]][weight] for edge in edges]
 
 
 def sample_tsp_tour(graph):
@@ -86,11 +114,28 @@ def append_last_node(tour):
     return np.concatenate((tour, tour[0:1]))
 
 
-def get_tour_edges(tour):
-    """ Get an array of edges for a given tour """
+def get_tour_edges_asymmetric(tour):
+    """ Get an array of edges for a given tour, assuming a directed graph """
 
     items = append_last_node(tour)
-    return np.array([[items[num], items[num+1]] for num in range(len(tour))])
+    edges = np.array([[items[num], items[num+1]] for num in range(len(tour))])
+    return edges
+    
+
+def get_tour_edges_symmetric(tour):
+    """ Get an array of edges for a given tour, with (i, j): i > j """
+
+    edges = get_tour_edges_asymmetric(tour)
+    return np.sort(edges, axis=1)
+
+
+def get_tour_edges(tour, symmetric=True):
+    """ Get an array of edges for a given tour, with (i, j): i > j """
+
+    if symmetric:
+        return get_tour_edges_symmetric(tour)
+    else:
+        return get_tour_edges_asymmetric(tour)
 
 
 def get_tour_lengths(graph, tour):
@@ -116,7 +161,13 @@ def check_edges_in_tour(edges, tour):
     """ Check if the given edges are in the tour """
 
     tour_edges = get_tour_edges(tour)
-    return np.array([edge.tolist() in tour_edges.tolist() for edge in edges])
+    return np.array([list(edge) in tour_edges.tolist() for edge in edges])
+
+
+def check_edges_in_edges(edges, other_edges):
+    """ Check if the given edges are in the tour """
+
+    return np.array([list(edge) in other_edges.tolist() for edge in edges])
 
 
 def check_edges_in_tours(edges, tours):
@@ -166,3 +217,120 @@ def infinite_self_weights(graph):
     for vertex in vertices:
         graph[vertex][vertex]["weight"] = 99999999999
     return graph
+
+
+def delete_self_weights(graph):
+    """ Deletes all of the self-weights in a graph """
+
+    vertices = get_vertices(graph)
+    for vertex in vertices:
+        graph.remove_edge(vertex, vertex)
+    return graph
+
+
+def to_undirected(graph):
+    """ Creates a copy of the graph in undirected form """
+
+    new_graph = copy.deepcopy(graph)
+    edges = get_edges(new_graph).to_directe()
+    new_graph.remove_edges_from([edge for edge in edges if edge[1] > edge[0]])
+    return new_graph
+
+
+def check_cycle(graph):
+    """ Checks for cycles in the given graph and returns one or an empty list """
+
+    # return nx.find_cycle(graph)
+    try:
+        return nx.find_cycle(graph)
+    except:
+        return []
+
+
+def compute_mincut(graph, vertex_a, vertex_b, capacity="weight"):
+    """ Compute the mincut for the given graph """
+
+    return nx.algorithms.flow.minimum_cut(graph, vertex_a, vertex_b, capacity=capacity)
+
+
+def compute_mincut_values(graph, capacity="weight"):
+    """ Compute the mincut values for each edge of the given graph """
+
+    mincut_values = []
+    for edge in graph.edges:
+        mincut_values.append(compute_mincut(graph, *edge, capacity)[0])
+    return mincut_values
+
+
+def compute_unique_mincut_values(graph, capacity="weight"):
+    """ Compute the unique mincut values of the given graph """
+
+    mincut_values = compute_mincut_values(graph, capacity=capacity)
+    return np.unique(mincut_values)
+
+
+def check_graph(graph):
+    """ Check if the given graph is undirected """
+
+    return type(graph) == nx.Graph
+
+
+def check_digraph(graph):
+    """ Check of the graph is a directed graph """
+
+    return type(graph) == nx.DiGraph()
+
+
+def build_graph_from_edges(edges, weights=None, symmetric=True):
+    """ Using the given edges, build a graph with unit weights """
+
+    if symmetric:
+        graph = nx.Graph()
+    else:
+        graph = nx.DiGraph()
+    weights = weights or [1, ] * len(edges)
+
+    graph.add_edges_from(edges)
+
+    return graph
+
+
+def compute_vector_index_symmetric(edge, order, min_vertex):
+    """ Compute the index of the given edge in the edge vector """
+    
+    (i, j) = edge
+
+    if i >= j:
+        raise ValueError("Indices not symmetric: {}, {}".format(i, j))
+    
+    vertical_offset = np.sum([order - k + (min_vertex - 1)
+                              for k in range(1 - (1 - min_vertex), i)])
+    horizontal_offset = j - i - 1 
+    return int(vertical_offset + horizontal_offset)
+
+
+def compute_vector_index(edge, order, min_vertex, symmetric=True):
+    """ Compute the index of the given edge in the edge vector """
+
+    if symmetric:
+        return compute_vector_index_symmetric(edge, order, min_vertex)
+    else:
+        raise Exception("Assymetric edge index computer not implemented!")
+        
+
+def compute_indicator_vector(graph, edges):
+    """ Build an indicator vector of length size(graph) for the given edges """
+
+    symmetric = check_graph(graph)
+    size, order = get_size(graph), get_order(graph)
+    min_vertex = get_min_vertex(graph)
+    indices = [compute_vector_index(edge, order, min_vertex, symmetric) for edge in edges]
+    return build_indicator_vector(size, indices)
+
+
+def build_indicator_vector(length, nonzeros):
+    """ Build an indicator vector with the nonzero indices specified """
+
+    vector = np.zeros((length))
+    vector[nonzeros] = 1
+    return vector
