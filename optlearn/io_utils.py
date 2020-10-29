@@ -27,10 +27,16 @@ def build_string(items):
 
     empty = "{} " * len(items) 
     return empty[:-1].format(*items) + "\n"
-    
+
+
+def load_npy_file(path):
+    """ Load a single npy file """
+
+    return np.load(path)
+
 
 def load_npz_data(path):
-    """ Load a single npz traininf file """
+    """ Load a single npz training file """
     with np.load(path) as npz:
         return npz["X"], npz["y"]
 
@@ -38,7 +44,7 @@ def load_npz_data(path):
 def load_npz_datas_for_training(paths):
     """ Load many npz training files into X, y arrays """
     
-    pairs = [[*load_npz_data(path)] for path in paths]
+    pairs = [load_npz_data(path) for path in paths]
     X = np.vstack([pair[0] for pair in pairs])
     y = np.concatenate([pair[1] for pair in pairs])
     return X, y
@@ -83,8 +89,23 @@ class optObject():
         self._solution = edges
         return tour
 
+    def _check_graph(self):
+        """ Check if the graph is already set """
+
+        return hasattr(self, "_graph")
+
+    def _set_graph(self):
+        """ Set the graph """
+
+        self._graph = self._problem.get_graph()
+        self._graph = graph_utils.delete_self_weights(self._graph)
+
     def get_graph(self):
-        return self._problem.get_graph()
+        """ Get the graph """
+
+        if not self._check_graph():
+            self._set_graph()
+        return self._graph
 
     def get_solution(self):
         return self._solution
