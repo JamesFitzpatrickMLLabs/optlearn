@@ -124,7 +124,7 @@ class createTrainingFeatures(feature_utils.buildFeatures):
         """ Using the problem file, compute the labels """
         
         tour = cc_solve.solution_from_path(problem_fname).tour
-        edges = graph_utils.get_tour_edges(self._graph)
+        edges = graph_utils.get_tour_edges(tour)
         min_vertex = np.min(self._graph.nodes)
         order = len(self._graph.nodes)
         indices = [graph_utils.compute_vector_index_symmetric(edge, order, min_vertex)
@@ -137,7 +137,7 @@ class createTrainingFeatures(feature_utils.buildFeatures):
         """ Using the solution file, read the solution in """
 
         tour = self._object.read_solution_from_file(solution_fname)
-        edges = graph_utils.get_tour_edges(self._graph)
+        edges = graph_utils.get_tour_edges(tour)
         min_vertex = np.min(self._graph.nodes)
         order = len(self._graph.nodes)
         indices = [graph_utils.compute_vector_index_symmetric(edge, order, min_vertex)
