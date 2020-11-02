@@ -1,3 +1,5 @@
+import numpy as np
+
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
 
@@ -20,3 +22,7 @@ def false_negative_rate(y, y_hat):
     return 1 - true_positive_rate(y, y_hat)
 
 
+def pruning_rate(y_hat):
+    """ Compute the pruning rate for binayr predictions """
+
+    return np.sum(y_hat) / len(y_hat)
