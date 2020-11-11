@@ -11,18 +11,18 @@ def generate_coord_dict(graph):
     return nx.spring_layout(graph)
 
 
-def check_tour_and_coords(coord_dict, tour):
-    """ Check that the tour and coordinate indices match """
+def check_indices(coord_dict, indices):
+    """ Check that the coordinate indices match """
 
-    coord_uniques = np.unique(coord_dict.keys())
-    tour_uniques = np.unique(tour)
+    coord_uniques = np.unique(list(coord_dict.keys()))
+    vertex_uniques = np.unique(indices)
 
-    missing_coord = [item for item in coord_uniques if item not in tour_uniques]    
-    missing_tour = [item for item in tour_uniques if item not in coord_uniques]
+    missing_coord = [item for item in coord_uniques if item not in vertex_uniques]    
+    missing_vertex = [item for item in vertex_uniques if item not in coord_uniques]
 
-    if len(missing_coord) > 0 or len(missing_tour) > 0:
-        print("Vertices in coordinate dict not found in tour: {}".format(missing_coord))
-        print("Vertices in tour not found in coordinate dict: {}".format(missing_tour))
+    if len(missing_coord) > 0 or len(missing_vertex) > 0:
+        print("Vertices in coordinate dict not found in vertex set: {}".format(missing_coord))
+        print("Vertices in vertex set not found in coordinate dict: {}".format(missing_vertex))
         raise ValueError("Vertex indices must match!")
     
 
@@ -53,6 +53,8 @@ def plot_vertices(coord_dict, indices=None, withlabels=True):
 def plot_tour(coord_dict, tour, withlabels=True):
     """ Plot the tour for a given object problem instance """
 
+    check_indices(coord_dict, tour)
+    
     appended_tour = graph_utils.append_last_node(tour)
     tour_x, tour_y = get_x_y_lists(coord_dict, appended_tour)
 
@@ -63,6 +65,8 @@ def plot_tour(coord_dict, tour, withlabels=True):
 def plot_edges(coord_dict, edges, weights, withlabels=True):
     """ Plot the given edges and their weights for a given object problem instance """
 
+    check_indices(coord_dict, edges)
+    
     plot_vertices(coord_dict, withlabels=withlabels)    
     
     for (edge, weight) in zip(edges, weights):
@@ -81,6 +85,8 @@ def plot_graph(graph, edges=None, weights=None, weight="weight", coord_dict=None
     if weights is None:
         weights = weights or graph_utils.get_weights(graph, weight=weight)
     
+    check_indices(coord_dict, edges)
+        
     plot_vertices(coord_dict, withlabels=withlabels)
     plot_edges(coord_dict, edges, weights)
     
