@@ -23,6 +23,6 @@ def false_negative_rate(y, y_hat):
 
 
 def pruning_rate(y_hat):
-    """ Compute the pruning rate for binayr predictions """
+    """ Compute the pruning rate for binary predictions """
 
-    return np.sum(y_hat) / len(y_hat)
+    return 1 - np.sum(y_hat) / len(y_hat)
