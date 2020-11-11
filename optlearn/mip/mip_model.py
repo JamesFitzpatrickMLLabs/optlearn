@@ -376,38 +376,44 @@ class tspProblem():
         graph.add_edges_from(edges)
         
         cycle = graph_utils.check_cycle(graph)
-
         return len(cycle) == len(self.vertices)
 
-    def check_tour(self):
-        """ Checks if the current solution gives a valid tour """
+    def default_solver_args(self, kwargs):
+        """ Set default arguments if not given """
 
-        varvals = self.get_varvals()
-        edges = self.get_edges()
-        bunches = [(*edge, {"weight": varval}) for (edge, varval) in zip(edges, varvals)]
-        graph = nx.Graph()
-        graph.add_edges_from(bunches)
-        
-        cut_values = graph_utils.compute_unique_mincut_values(graph)
-        values = [value for value in cut_values if value <= 0.99 + self._is_symmetric] 
-        return len(values) == 0
+        self.solution_dict = {}
+        self.solution_counter = 0
+        self.max_nodes = kwargs.get("max_nodes") or 99999999
         
     def solve(self, kwargs={}):
         """ Solve to optimality if possible """
+
+        self.default_solver_args(kwargs)
         
         if self.formulation == "dantzig":
             if self._solver == "coinor":
                 print("Not implemented...")
             if self._solver == "xpress":
+
+                def check_nodes(problem, graph, isheuristic, cutoff):
+                    self.solution_dict[self.solution_counter] = {
+                        "solution": self.get_varvals(),
+                        }
+                    
+                    self.solution_counter += 1
+                    if self.solution_counter >= self.max_nodes:
+                        self.problem.interrupt(1)
+                    return (0, None)
                 
                 def check_tour(problem, graph, isheuristic, cutoff):
-                    ser = self.check_tour_other()
-                    return (ser, None)
+                    ser = np.logical_not(self.check_tour_other())
+                    return (bool(ser), None)
 
                 def add_cuts(problem, graph):
                     self.set_mincut_constraints()
                     return 0
-                    
+
+                self.problem.addcbpreintsol(check_nodes, None, 1)
                 self.problem.addcbpreintsol(check_tour, None, 1)
                 self.problem.addcboptnode(add_cuts, None, 1)
 
