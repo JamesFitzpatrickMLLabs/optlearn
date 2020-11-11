@@ -1,3 +1,4 @@
+import numpy as np
 import networkx as nx
 
 import matplotlib.pyplot as plt
@@ -62,16 +63,19 @@ def plot_tour(coord_dict, tour, withlabels=True):
     plt.plot(tour_x, tour_y, color="green")
     
 
-def plot_edges(coord_dict, edges, weights, withlabels=True):
+def plot_edges(coord_dict, edges, weights=None, withlabels=True):
     """ Plot the given edges and their weights for a given object problem instance """
 
     check_indices(coord_dict, edges)
+
+    if weights is None:
+        weights = [1, ] * len(edges)
     
     plot_vertices(coord_dict, withlabels=withlabels)    
     
     for (edge, weight) in zip(edges, weights):
-        xs = (coords[edge[0]][0], coords[edge[1]][0])
-        ys = (coords[edge[0]][1], coords[edge[1]][1])
+        xs = (coord_dict[edge[0]][0], coord_dict[edge[1]][0])
+        ys = (coord_dict[edge[0]][1], coord_dict[edge[1]][1])
         plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
 
 
