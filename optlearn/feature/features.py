@@ -224,13 +224,15 @@ def compute_f7_edges(graph, iterations="auto"):
 
 
 def compute_f8_edges(graph):
-    """ Compute the bet-and-run features for each edge """
+    """ Compute the root relxation features for each edge """
 
-    problem = mip_model.tspIntegerModel(graph=graph,
-                                        formulation="dantzig",
-                                        var_type="binary",
-                                        solver="coinor")
-    problem.solve_dantzig()
+    problem = mip_model.tspProblem(
+        var_type="binary",
+        graph=graph,
+        verbose=False
+    )
+
+    problem.perform_relaxation()
     return problem.get_varvals()
 
 
