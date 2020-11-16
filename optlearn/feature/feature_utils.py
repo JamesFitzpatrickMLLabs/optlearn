@@ -1,6 +1,6 @@
 import numpy as np
 
-from optlearn import graph_utils
+from optlearn.feature import features
 
 
 class buildFeatures():
@@ -17,7 +17,7 @@ class buildFeatures():
     def get_funcs(self):
         """ Get the functions from graph_utils.py """
         
-        self._funcs = [graph_utils.functions[item] for item in function_names]
+        self._funcs = [features.functions[item] for item in self.function_names]
         
     def compute_feature(self, graph, func):
         """ Compute a specific feature for the graph """
@@ -27,5 +27,5 @@ class buildFeatures():
     def compute_features(self, graph):
         """ Compute the feature vector for the graph """
         
-        data = [self.compute_feature(graph, func) for func in self.funcs]
+        data = [self.compute_feature(graph, func) for func in self._funcs]
         return np.stack(data, axis=1)
