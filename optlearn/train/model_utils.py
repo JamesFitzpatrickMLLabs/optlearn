@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 
 from optlearn.feature import feature_utils
+from optlearn.fix import fix_model
 
 
 class modelPersister():
@@ -129,6 +130,13 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         y = self.predict_vector(X)
         return self._build_prediction_graph(graph, y)
 
+    def prune_graph_with_logic(self, original_graph):
+        """ Prune the graph, re-adding edges using logical rules """
+
+        pruned_graph = self.prune_graph(original_graph)
+        fixed_graph = fix_model.minimum_degree(original_graph, pruned_graph)
+        return fix_model.connected(original_graph, fixed_graph)
+
     def _detect_graph(self, object):
         """ Check if the object is a graph """
 
@@ -154,3 +162,4 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         if self._detect_vector(X):
             return self.predict_vector(X)
         raise ValueError("X is of unsupported type!")
+    
