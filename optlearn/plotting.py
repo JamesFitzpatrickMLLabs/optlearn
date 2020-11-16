@@ -49,7 +49,7 @@ def plot_vertices(coord_dict, indices=None, withlabels=True):
 
     if withlabels:
         for a, b, k in zip(coords_x, coords_y, coord_dict.keys()):
-            plt.text(a, b, k)
+            plt.text(a, b, k, color="purple")
 
 def plot_tour(coord_dict, tour, withlabels=True):
     """ Plot the tour for a given object problem instance """
