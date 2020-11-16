@@ -26,7 +26,7 @@ def connected(original_graph, pruned_graph, threshold=None):
 
     threshold = threshold or graph_utils.logceil(pruned_graph)
 
-    if not fix_utils.is_connected:
+    if not fix_utils.is_connected(pruned_graph):
         new_edges = fix_utils.get_all_k_min_connectors(original_graph,
                                                        pruned_graph,
                                                        threshold,
