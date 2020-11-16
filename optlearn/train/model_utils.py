@@ -6,7 +6,7 @@ from optlearn.feature import feature_utils
 
 class modelPersister():
 
-    def __init__(self, model=None, functions_names=None):
+    def __init__(self, model=None, function_names=None):
         
         self.model = model
         self.function_names = function_names
@@ -98,18 +98,36 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
 
         self.model = model
         self.function_names = function_names
+        self.get_funcs()
 
+    def _build_prediction_graph(self, graph, y):
+        """ Build a pruned graph using the predictions """
+
+        new_graph = type(graph)()
+        new_graph.graph = graph.graph
+        new_graph.add_nodes_from(graph.nodes)
+        edges = [edge for (edge, item) in zip(graph.edges, y) if item > 0.5]
+        for edge in edges:
+            new_graph.add_edge(*edge, **graph[edge[0]][edge[1]])
+        return new_graph
 
     def predict_vector(self, X):
         """ Make a prediction on a vector, outputs vector """
 
         return self.model.predict(X)
 
-    def predict_graph(self, X):
+    def predict_graph(self, graph):
         """ Make a prediction on a graph, outputs vector """
 
-        X = self.compute_features(X)
+        X = self.compute_features(graph)
         return self.predict_vector(X)
+
+    def prune_graph(self, graph):
+        """ Prune thes the given graph, returning a graph """
+
+        X = self.compute_features(graph)
+        y = self.predict_vector(X)
+        return self._build_prediction_graph(graph, y)
 
     def _detect_graph(self, object):
         """ Check if the object is a graph """
@@ -128,7 +146,7 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         return bool(is_list + is_array)
     
     def predict(self, X):
-        """ Make a prediction on the given object """
+        """ Make a prediction on the given object, returns vector """
 
         if self._detect_graph(X):
             self._check_function_names()
