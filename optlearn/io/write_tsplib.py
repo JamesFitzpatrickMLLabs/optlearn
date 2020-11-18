@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import networkx as nx
 
 from optlearn import graph_utils
 
@@ -144,35 +145,70 @@ def write_eof(fid):
     fid.write("EOF")
 
 
-def write_tsp_preamble(fid, graph, name=None, explicit=False):
-    """ Write the preamble for a given graph """
+def get_tsp_preamble_graph(graph):
+    """ Get the preamble parameters, given a graph """
 
     dimension = len(graph.nodes)
-    problem_type = "tsp"
+    weight_type = "explicit"
+
     
     if graph.is_directed():
         weight_format = "full"
     else:
         weight_format = "triangular"
-    if not explicit:
-        weight_type = "euclidean"
-    else:
-        weight_type = "explicit"
+    
+    return {
+        "dimension": dimension,
+        "weight_format": weight_format,
+        "weight_type": weight_type
+    }
+
+
+def get_tsp_preamble_coord_dict(coord_dict):
+    """ Get the preamble parameters, given a coordinate dict """
+
+    dimension = len(coord_dict.items())
+    weight_type = "euclidean"
+    
+    return {
+        "dimension": dimension,
+        "weight_type": weight_type
+    }
+        
+
+def write_tsp_preamble(fid, object, name=None):
+    """ Write the preamble for a given graph """
+
+    problem_type = "tsp"
+
+    if type(object) == type(nx.Graph()) or type(object) == type(nx.DiGraph()):
+        param_dict = get_tsp_preamble_graph(object)
+    if type(object) == dict:
+        param_dict = get_tsp_preamble_coord_dict(object)
     
     write_name(fid, name)
     write_problem_type(fid, problem_type)
-    write_dimension(fid, dimension)
-    write_edge_weight_type(fid, weight_type)
-    if explicit:
-        write_edge_weight_format(fid, weight_format)
+    write_dimension(fid, param_dict["dimension"])
+    write_edge_weight_type(fid, param_dict["weight_type"])
+    if "weight_format" in param_dict.keys():
+        write_edge_weight_format(fid, param_dict["weight_format"])
     
 
-def write_tsp_explicit(fname, graph, name=None):
+def write_tsp_weights(fname, graph, name=None):
     """ Write a graph with weights given explicitly """
 
     with open(fname, "w") as fid:
-        write_tsp_preamble(fid, graph, name=name, explicit=True)
+        write_tsp_preamble(fid, graph, name=name)
         write_edge_weight_section(fid, graph)
+        write_eof(fid)
+
+    
+def write_tsp_nodes(fname, coord_dict, name=None):
+    """ Write a graph with weights given explicitly """
+
+    with open(fname, "w") as fid:
+        write_tsp_preamble(fid, coord_dict, name=name)
+        write_node_coord_section(fid, coord_dict)
         write_eof(fid)
 
     
