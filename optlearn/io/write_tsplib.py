@@ -142,7 +142,7 @@ def write_edge_weight_section(fid, graph):
 def write_eof(fid):
     """ Write the end of file line """
 
-    fid.write("EOF")
+    fid.write("EOF\n")
 
 
 def get_tsp_preamble_graph(graph):
@@ -186,7 +186,7 @@ def write_tsp_preamble(fid, object, name=None):
     if type(object) == dict:
         param_dict = get_tsp_preamble_coord_dict(object)
     
-    write_name(fid, name)
+    write_name(fid, name=name)
     write_problem_type(fid, problem_type)
     write_dimension(fid, param_dict["dimension"])
     write_edge_weight_type(fid, param_dict["weight_type"])
