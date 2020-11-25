@@ -177,8 +177,9 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         """ Prune the graph, re-adding edges using logical rules """
 
         pruned_graph = self.prune_graph(original_graph)
-        fixed_graph = fix_model.minimum_degree(original_graph, pruned_graph)
-        return fix_model.connected(original_graph, fixed_graph)
+        fixed_graph = fix_model.ensure_minimum_degree(original_graph, pruned_graph)
+        fixed_graph = fix_model.ensure_connected(original_graph, fixed_graph)
+        return fix_model.ensure_doubletree(original_graph, fixed_graph)
 
     def _detect_graph(self, object):
         """ Check if the object is a graph """
