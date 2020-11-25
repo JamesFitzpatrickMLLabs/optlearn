@@ -1,3 +1,5 @@
+import torch
+
 import numpy as np
 import networkx as nx
 
@@ -100,6 +102,7 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         self.model = model
         self.function_names = function_names
         self.get_funcs()
+        self._set_device()
 
     def _build_prediction_graph(self, graph, y):
         """ Build a pruned graph using the predictions """
@@ -112,10 +115,49 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
             new_graph.add_edge(*edge, **graph[edge[0]][edge[1]])
         return new_graph
 
+    def _set_device(self):
+        """ Set the device """
+
+        if torch.cuda.is_available():
+            self._device = torch.device("cuda:0")
+            print("GPU detected!")
+        else:
+            self._device = torch.device("cpu")
+            print("GPU not detected!")
+    
+    def _check_cuda(self, parameters):
+        """ Check if the parmaeters are placed on the gpu """
+
+        return parameters.device.type == "cuda"
+
+    def _check_cudas(self):
+        """ Check if the model is placed on the gpu, if it is a torch model """
+
+        if hasattr(self.model, "parameters"):
+            ret =  all([self._check_cuda(param) for param in self.model.parameters()])
+            
+        if ret and self._device == "cpu":
+            raise ValueError("No GPU found, but the model needs to run on one!")
+
+        return ret
+        
+    def _predict_torch(self, X):
+        """ Make a prediction using a torch model """
+
+        if self._check_cudas():
+            y = self.model(torch.tensor(X).to(self._device).float())
+            return y.data.cpu().numpy()
+        else:
+            y = self.model(torch.tensor(X).float())
+            return y.data.numpy()
+
     def predict_vector(self, X):
         """ Make a prediction on a vector, outputs vector """
 
-        return self.model.predict(X)
+        if hasattr(self.model, "parameters"):
+            return self._predict_torch(X)
+        else:
+            return self.model.predict(X)
 
     def predict_graph(self, graph):
         """ Make a prediction on a graph, outputs vector """
@@ -127,6 +169,7 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         """ Prune thes the given graph, returning a graph """
 
         X = self.compute_features(graph)
+        print(X.shape)
         y = self.predict_vector(X)
         return self._build_prediction_graph(graph, y)
 
