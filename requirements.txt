@@ -7,4 +7,4 @@ xpress>=35.01.01
 sklearn>=0.23.1
 mip==1.9.3
 matplotlib==3.3.0
-
+torch==1.7.0
