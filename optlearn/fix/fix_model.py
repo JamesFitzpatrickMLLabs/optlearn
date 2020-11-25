@@ -43,7 +43,7 @@ def ensure_doubletree(original_graph, pruned_graph):
 
     
     model = mst_model.doubleTreeSparsifier()
-    iterations = int(np.ceil(np.log2(len(graph.nodes))))
+    iterations = int(np.ceil(np.log2(len(original_graph.nodes))))
     new_edge_sets = run_sparsify(original_graph, iterations)
 
     for new_edges in new_edge_sets:
