@@ -1,4 +1,5 @@
 import torch
+import joblib
 
 import numpy as np
 import networkx as nx
@@ -140,6 +141,11 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
             raise ValueError("No GPU found, but the model needs to run on one!")
 
         return ret
+
+    def _normalise(self, X):
+        """ Perform softmax over the given array """
+
+        return (X - X.min()) / (X.max() - X.min())
         
     def _predict_torch(self, X):
         """ Make a prediction using a torch model """
@@ -159,18 +165,38 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         else:
             return self.model.predict(X)
 
+    def predict_proba_vector(self, X):
+        """ Make a prediction on a vector, outputs vector """
+
+        if hasattr(self.model, "parameters"):
+            return self._predict_torch(X)
+        else:
+            if hasattr(self.model, "decision_function"):
+                y = self.model.decision_function(X)
+            else:
+                y = self.model.predict_proba(X)[:,1]
+        return self._normalise(y)
+    
+    def predict_proba_graph(self, graph):
+        """ Make a prediction on a graph, outputs vector """
+
+        X = self.compute_features(graph)
+        return self.predict_proba_vector(X)
+        
     def predict_graph(self, graph):
         """ Make a prediction on a graph, outputs vector """
 
         X = self.compute_features(graph)
         return self.predict_vector(X)
 
-    def prune_graph(self, graph):
+    def prune_graph(self, graph, threshold=None):
         """ Prune thes the given graph, returning a graph """
 
         X = self.compute_features(graph)
-        print(X.shape)
-        y = self.predict_vector(X)
+        if threshold is None:
+            y = self.predict_vector(X)
+        else:
+            y = (self.predict_proba_vector(X) > threshold).astype(int)
         return self._build_prediction_graph(graph, y)
 
     def prune_graph_with_logic(self, original_graph):
