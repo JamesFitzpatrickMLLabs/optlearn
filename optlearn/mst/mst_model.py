@@ -4,7 +4,6 @@ import networkx as nx
 import pandas as pd
 import numpy as np
 
-
 from optlearn import graph_utils
 
 
@@ -22,7 +21,7 @@ class edgeSparsifier():
         return graph
         
     def sparsify_once(self, graph, edge_extracter, weight="weight"):
-        """ Sparsify the graph by removing the minimum spanning tree """
+        """ Sparsify the graph by removing edges identified by the extracter """
 
         edges = edge_extracter(graph, weight=weight)
         self.remove_edges(graph, edges)
@@ -146,20 +145,23 @@ class mstSparsifier(edgeSparsifier, mstConstructor):
 
         return [self.tuple_to_string(item) for item in tuples]
 
+    def copy_graph_blank(self, graph):
+        """ make a zero-weighted copy of the graph """
+
+        copy_graph = nx.Graph()
+        copy_graph.add_edges_from(graph.edges)
+        nx.set_edge_attributes(copy_graph, 0, "weight")
+        return copy_graph
+    
     def fit_sparsify(self, graph, iterations, weight="weight"):
         """ Compute the sparsification features for the graph """
         
-        return_array = np.zeros((len(graph.edges), 2))
-        
-        sparsified_edges = self.run_sparsify(graph, iterations, weight="weight")
-        for num, item in enumerate(self.tuples_to_strings(graph.edges)):
-            for set_num, sparsified_set in enumerate(sparsified_edges):
-                sparsified_set = self.tuples_to_strings(sparsified_set)
-                if item in sparsified_set:
-                    return_array[num, 0] = 1
-                    return_array[num, 1] = set_num
-
-        return return_array.astype(int)
+        sparse_graph = self.copy_graph_blank(graph)
+        edges = self.run_sparsify(graph, iterations=iterations, weight=weight)
+        for num, edge_set in enumerate(edges):
+            weighted_edges = [edge + ((num + 1) / iterations, ) for edge in edge_set]
+            sparse_graph.add_weighted_edges_from(weighted_edges)
+        return graph_utils.get_weights(sparse_graph)
 
 
 class doubleTreeSparsifier(edgeSparsifier, doubleTreeConstructor):
