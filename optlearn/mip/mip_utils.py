@@ -24,18 +24,31 @@ def compute_edge_term(weight, variable):
     return variable * weight
 
 
-def define_edge_term(variable_dict, graph, edge, prefix="x"):
+def define_edge_term(variable_dict, graph, edge, prefix="x",
+                     perturb=False, max_weight=None):
     """ Define a single edge term in the objective """
 
     weight = graph_utils.get_edge_weight(graph, *edge)
+    if max_weight is None:
+        max_weight = weight
+    if perturb:
+        weight = weight + weight / max_weight * np.random.randn() * 4
+        weight = np.clip(weight, 0, np.inf)
     name = name_variable(edge, prefix=prefix)
     return compute_edge_term(weight, variable_dict[name])
 
 
-def define_edge_objective(variable_dict, graph):
+def define_edge_objective(variable_dict, graph, perturb=False):
     """ Define all terms for the edge objective """
 
-    return [define_edge_term(variable_dict, graph, edge, prefix="x") for edge in graph.edges]
+    weights = np.array(graph_utils.get_weights(graph))
+    if perturb:
+        perturbs = ((weights - weights.mean())/weights.mean()) ** 2
+        perturbs  = np.clip(perturbs * 2 -1, -1, 1)
+        randoms = np.random.uniform(size=len(weights))
+        weights = weights + weights * perturbs * randoms / 3
+    variables = [variable_dict["x_{},{}".format(*edge)] for edge in graph.edges]
+    return [var * weight for (var, weight) in zip(variables, weights)]
 
 
 def get_variable_tuple(string):
