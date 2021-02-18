@@ -74,9 +74,10 @@ def plot_edges(coord_dict, edges, weights=None, withlabels=True):
     plot_vertices(coord_dict, withlabels=withlabels)    
     
     for (edge, weight) in zip(edges, weights):
-        xs = (coord_dict[edge[0]][0], coord_dict[edge[1]][0])
-        ys = (coord_dict[edge[0]][1], coord_dict[edge[1]][1])
-        plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
+        if weight > 0:
+            xs = (coord_dict[edge[0]][0], coord_dict[edge[1]][0])
+            ys = (coord_dict[edge[0]][1], coord_dict[edge[1]][1])
+            plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
 
 
 def plot_graph(graph, edges=None, weights=None, weight="weight", coord_dict=None, withlabels=True):
