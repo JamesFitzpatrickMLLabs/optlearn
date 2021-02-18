@@ -1,20 +1,18 @@
+import itertools
+
 import numpy as np
+import networkx as nx
 
 from scipy.spatial.distance import cdist
 
-
-_metrics = {
-    "euclidean": euclidean,
-    "manhattan": manhattan,
-}
+from optlearn.io import xml_utils
 
 
 def read_vrp_xml(fname):
     """ Read and parse the VRP xml file """
 
-    xml_root = read_xml(fname).getroot()
-    return parse_vrp_file_xml(xml_root)
-
+    xml_root = xml_utils.read_xml(fname).getroot()
+    return xml_utils.parse_vrp_file_xml(xml_root)
 
 
 def euclidean(x, y):
@@ -84,55 +82,57 @@ def get_node_neighbour_edges(node_neighbours):
     return [(node, neighbour) for neighbour in neighbours]
 
 
-def get_node_coordinates(info_dict, nodes):
+def get_node_coordinates(info_dict):
     """ Get the coordinates of the given nodes """
 
-    node_info = info_dict["network"]["node_info"] 
-    return [node_info[key]["xy"] for key in nodes]
+    node_info = info_dict["network"]["node_info"]
+    return [node_info[key]["xy"] for key in node_info.keys()]
 
 
-def compute_pairwise_distances(coordinate, coordinates, metric, rounding):
+def compute_pairwise_distances(coordinates, metric, rounding, symmetric=True):
     """ Compute pairwise distances between coordinates """
 
-    return cdist(coordinate, coordinates, metric=metric).round(rounding)
+    distances = cdist(coordinates, coordinates, metric=metric).round(rounding)
+
+    if symmetric:
+        return distances[np.triu_indices_from(distances, 1)]
+    else:
+        return distances.flatten()
 
 
-def compute_distance_weights(info_dict, node, neighbours, symmetric=True):
-    """ Compute the distances between the given node and its given neighbours as edge weights """
+def get_complete_edges(info_dict, symmetric=True):
+    """ Get all the possible node pairs """
+
+    keys = list(info_dict["network"]["node_info"].keys())
     
-    coordinate = get_node_coordinates(info_dict, [node])
-    coordinates = get_node_coordinates(info_dict, neighbours)
-    metric = _metrics[info_dict["network"]["metric"]]
-    rounding = info_dict["network"]["decimals"]
-    return compute_pairwise_distances(coordinate, coordinates, metric, rounding)
+    if symmetric:
+        return np.array(list(itertools.combinations(keys, 2)))
+    else:
+        return np.array(list(itertools.permutations(keys, 2)))
 
 
 def add_weighted_edges(graph, edges, weights):
     """ Add the given edges to the graph with the specified weights """
 
     graph.add_weighted_edges_from([(*edge, {"weight": weight})
-                                   for (edge, weight) in zip(edges, weights)])
+                                   for ((edge), weight) in zip(edges, weights)])
     return graph
 
 
-def add_distance_edges(graph, info_dict, symmetric=True):
+def add_distance_edges(graph, info_dict, symmetric=True, rounding=0, metric="euclidean"):
     """ Compute and add distance weights """
 
-    node_pairs = list(get_all_pairs(info_dict, symmetric=symmetric))
-    node_edges = [get_node_neighbour_edges(node_pair) for node_pair in node_pairs]
-    edge_weights = [compute_distance_weights(info_dict, node, neighbours, symmetric)
-                    for (node, neighbours) in node_pairs]
-    zipped_items = zip(node_edges, edge_weights)
-    for item in zipped_items:
-        edges, weights = item
-        graph = add_weighted_edges(graph, edges, weights[0])
+    coordinates = get_node_coordinates(info_dict)
+    weights = compute_pairwise_distances(coordinates, metric=metric,
+                                         rounding=rounding, symmetric=True)
+    edges = map(tuple, get_complete_edges(info_dict, symmetric=symmetric))
+    # return edges, weights
+    weighted_edges = [edge + (weight,) for (edge, weight) in zip(edges, weights)]
+    graph.add_weighted_edges_from(weighted_edges)
     return graph
 
 
-
-test_graph = nx.Graph()
-test_dict = read_vrp_xml(fname)
-test_graph = add_node_info(test_graph, test_dict)
-test_graph = add_node_requests(test_graph, test_dict)
-test_graph = add_fleet_info(test_graph, test_dict)
-test_graph = add_distance_edges(test_graph, test_dict)
+_metrics = {
+    "euclidean": euclidean,
+    "manhattan": manhattan,
+}
