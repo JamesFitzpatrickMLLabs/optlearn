@@ -1,4 +1,5 @@
 import time
+import random
 
 import mip as mp
 import numpy as np
@@ -7,6 +8,7 @@ import networkx as nx
 
 from itertools import product
 from collections import OrderedDict
+from pyscipopt import SCIP_EVENTTYPE
 
 from optlearn import io_utils
 from optlearn import graph_utils
@@ -14,22 +16,24 @@ from optlearn.mip import mip_utils
 from optlearn.mip import constraints
 from optlearn.mip import xpress
 from optlearn.mip import coinor
+from optlearn.mip import scip
 
 
 _solver_modules = {
     "xpress": xpress,
     "coinor": coinor,
+    "scip": scip,
     }
+
 
 _solver_funcs = {
     "xpress": xpress._funcs,
     "coinor": coinor._funcs,
+    "scip": scip._funcs,
 }
 
 _formulations = [
     "dantzig",
-    "miller",
-    "commodity",
 ]
 
 
@@ -53,10 +57,15 @@ class tspProblem():
                  formulation="dantzig",
                  solver="xpress",
                  verbose=False,
+                 shuffle_columns=False,
+                 perturb=False
     ):
         """ Setup problem """
 
         self.verbose = verbose
+        self.perturb = perturb
+        self.shuffle_columns = shuffle_columns
+        self.times_optimised = 0
         self.initialise_variable_dict()
         self.initialise_vertices(graph)
         self.initialise_min_vertex(graph)
@@ -135,8 +144,12 @@ class tspProblem():
     def set_edge_variables(self, graph):
         """ Create and set all TSP edge variables """
 
-        for edge in graph.edges:
-            self.set_variable(edge, prefix="x", var_args=self._var_args)
+        if self.shuffle_columns:
+            for edge in random.sample(graph.edges, len(graph.edges)):
+                self.set_variable(edge, prefix="x", var_args=self._var_args)
+        else:
+            for edge in graph.edges:
+                self.set_variable(edge, prefix="x", var_args=self._var_args)
 
     def set_variables(self, graph):
         """ Create and set all variables for the formulation """
@@ -154,7 +167,9 @@ class tspProblem():
         """ Set the objective function """
 
         if self.formulation == "dantzig":
-            self._funcs["edge_objective"](self.problem, self.variable_dict, graph)
+            self._funcs["edge_objective"](self.problem,
+                                          self.variable_dict,
+                                          graph, self.perturb)
             return None
         print("No objective function defined!")
 
@@ -252,6 +267,19 @@ class tspProblem():
         """ Get all variable values associated with the problem """
 
         return self._funcs["get_varvals"](self.problem, self.variable_dict)
+
+    def get_redcosts(self):
+        """ Get all reduced costs associated with the problem """
+
+        return self._funcs["get_redcosts"](self.problem, self.variable_dict)
+    
+    def get_varvals_by_name(self, variable_names):
+        """ Get all variable values, querying them in the order given """
+
+        return self._funcs["get_varvals_by_name"](self.problem,
+                                                  self.variable_dict,
+                                                  variable_names,
+        )
             
     def get_nonzero_varnames(self, prefix="x"):
         """ Get all nonzero variable names from the LP solution """
@@ -325,101 +353,56 @@ class tspProblem():
         """ Check if the solution is integral """
 
         return mip_utils.all_values_integer(self.get_nonzero_varvals())
-        
-    def initialise_mincut_graph(self):
+    
+    def initialise_connection_graph(self):
         """ Set the mincut graph """
                     
-        self._mincut_graph = constraints.initialise_mincut_graph(self._is_symmetric)
-            
-    def set_mincut_graph(self):
-        """ Build a graph structure for mincut """
-        
-        values = self.get_varvals()
-        names = self.get_varnames()
-        edges = [mip_utils.get_edge_from_varname(name) for name in names]
-
-        self.initialise_mincut_graph()
-        self._mincut_graph = constraints.set_mincut_graph(self._mincut_graph, edges, values)
-        
-    def set_mincut_constraint(self, vertex_a, vertex_b):
-        """ Build a mincut constraint for a given pair of vertices """
-
-        variables = constraints.get_mincut_variables(self._mincut_graph, vertex_a, vertex_b,
-                                                     self.variable_dict, self._is_symmetric)
-        if variables is None:
-            return None
-
-        varnames = [variable.name for variable in variables]
-        edges = [mip_utils.get_edge_from_varname(varname) for varname in varnames]
-        uniques = np.unique(edges)
-        
-        if variables is not None:
-            self._funcs["add_mincut"](self.problem, variables, self.variable_dict)
-        
-    def set_mincut_constraints(self):
-        """ Build mincut constraints """
-
-        self.set_mincut_graph()
-        
-        for edge in self.get_edges(prefix="x"):
-            self.set_mincut_constraint(*edge)
-
-    def check_tour_other(self):
-        """ Checks if the current solution gives a valid tour """
-
-        varvals = self.get_varvals()
-        edges = self.get_edges()
-        vals = [1 if varval > 0 else 0 for varval in varvals]
-        edges = [edge for (edge, varval) in zip(edges, varvals) if varval == 1]
-
-        graph = constraints.initialise_mincut_graph(self._is_symmetric)
-        graph.add_edges_from(edges)
-        
-        cycle = graph_utils.check_cycle(graph)
-        return len(cycle) == len(self.vertices)
-
-    def default_solver_args(self, kwargs):
-        """ Set default arguments if not given """
-
-        self.solution_dict = {}
-        self.solution_counter = 0
-        self.max_nodes = kwargs.get("max_nodes") or 99999999
-        
-    def solve(self, kwargs={}):
-        """ Solve to optimality if possible """
-
-        self.default_solver_args(kwargs)
-        
-        if self.formulation == "dantzig":
-            if self._solver == "coinor":
-                print("Not implemented...")
-            if self._solver == "xpress":
-
-                def check_nodes(problem, graph, isheuristic, cutoff):
-                    self.solution_dict[self.solution_counter] = {
-                        "solution": self.get_varvals(),
-                        }
-                    
-                    self.solution_counter += 1
-                    if self.solution_counter >= self.max_nodes:
-                        self.problem.interrupt(1)
-                    return (0, None)
-                
-                def check_tour(problem, graph, isheuristic, cutoff):
-                    ser = np.logical_not(self.check_tour_other())
-                    return (bool(ser), None)
-
-                def add_cuts(problem, graph):
-                    self.set_mincut_constraints()
-                    return 0
-
-                self.problem.addcbpreintsol(check_nodes, None, 1)
-                self.problem.addcbpreintsol(check_tour, None, 1)
-                self.problem.addcboptnode(add_cuts, None, 1)
-
-                self.problem.solve()
-                        
+        return  constraints.initialise_connection_graph(self._is_symmetric)
+                                            
     def get_objective_value(self):
         """ Get the objective value of the current solution """
 
         return self._funcs["get_objective_value"](self.problem)
+
+    def optimise_scip(self, max_nodes=1e10, max_rounds=1e10):
+        """ Solve the problem using SCIP """
+
+        if self.times_optimised < 1:
+            contraint_handler = constraints.scip_constraint_handler(self,
+                                                                    max_rounds=max_rounds)
+            self.problem.includeConshdlr(contraint_handler,
+                                         "TSP", "Subtour Elimination",
+                                         sepapriority = -1, enfopriority = -1,
+                                         chckpriority = -1, sepafreq = -1,
+                                         propfreq = -1, eagerfreq = -1,
+                                         maxprerounds = 0, delaysepa = False,
+                                         delayprop = False, needscons = False,
+            )
+            event_handler = constraints.scip_event_handler(max_nodes=max_nodes)
+            self.problem.includeEventhdlr(event_handler, "Event", "Event Handler")
+        self.problem.optimize()
+
+    def optimise_xpress(self, max_nodes=1e10, max_rounds=1e10):
+        """ Solve the problem using Xpress """
+
+        if self.times_optimised < 1:
+            constrainer = constraints.crap_constraint_callback(self,
+                                                               max_rounds=max_rounds)
+            constrainer.add_cut_callback()
+            constrainer.add_tour_callback()
+        self.problem.mipoptimize()
+
+    def optimise(self, max_nodes=1e10, max_rounds=1e10):
+        """ Solve the problem """
+
+        self.counter = 0
+        self.solutions = []
+        
+        if self._solver == "xpress":
+            self.optimise_xpress(max_nodes=max_nodes, max_rounds=max_rounds)
+        if self._solver == "scip":
+            self.optimise_scip(max_nodes=max_nodes, max_rounds=max_rounds)
+        if self._solver == "coin":
+            raise NotImplementedError("Not implemented for COIN yet!")
+
+        self.times_optimised += 1
