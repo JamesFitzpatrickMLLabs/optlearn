@@ -21,6 +21,9 @@ def extract_edges(model, graph, iterations="auto"):
 def build_prune_indicators(model, graph, iterations="auto"):
     """ Build indicator features for each edge in the graph """
 
+    if iterations == "auto":
+        iterations = int(np.ceil(np.log2(len(graph.nodes))))
+    
     pruned_edges = extract_edges(model, graph, iterations)
     return graph_utils.compute_indicator_vector(graph, pruned_edges)
 
@@ -28,6 +31,8 @@ def build_prune_indicators(model, graph, iterations="auto"):
 def build_prune_features(model, graph, iterations="auto"):
     """ Build continuous features for each edge in the graph """
 
-    features = model.fit_sparsify(graph, iterations)
-
+    if iterations == "auto":
+        iterations = int(np.ceil(np.log2(len(graph.nodes))))
+    
+    return model.fit_sparsify(graph, iterations)
     
