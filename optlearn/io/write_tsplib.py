@@ -204,7 +204,7 @@ def write_tsp_weights(fname, graph, name=None):
 
     
 def write_tsp_nodes(fname, coord_dict, name=None):
-    """ Write a graph with weights given explicitly """
+    """ Write a graph with the coordinates given explicitly """
 
     with open(fname, "w") as fid:
         write_tsp_preamble(fid, coord_dict, name=name)
