@@ -126,9 +126,21 @@ def add_distance_edges(graph, info_dict, symmetric=True, rounding=0, metric="euc
     weights = compute_pairwise_distances(coordinates, metric=metric,
                                          rounding=rounding, symmetric=True)
     edges = map(tuple, get_complete_edges(info_dict, symmetric=symmetric))
-    # return edges, weights
     weighted_edges = [edge + (weight,) for (edge, weight) in zip(edges, weights)]
     graph.add_weighted_edges_from(weighted_edges)
+    return graph
+
+
+def read_vrp_problem_from_xml(filename):
+    """ Read an xml vrp problem file into a networkx graph """
+
+    graph = nx.Graph()
+    dict = read_vrp_xml(filename)
+    graph = add_node_info(graph, dict)
+    graph = add_node_requests(graph, dict)
+    graph = add_fleet_info(graph, dict)
+    graph = add_distance_edges(graph, dict)
+    
     return graph
 
 
