@@ -32,6 +32,61 @@ def build_connection_graph(solver):
     return graph
 
 
+class subtourStrategy():
+
+    def __init__(self, cut_strategy=None):
+
+        self.cut_strategy = cut_strategy
+        self.check_strategy()
+
+    def check_strategy(self):
+
+        if self.cut_strategy is None:
+            self.cut_strategy = "small_if_possible"
+        if self.cut_strategy not in ["small_if_possible", "all"]:
+            self.cut_strategy = "small_if_possible"
+
+    def get_subtour_lens(self, subtours):
+
+        return np.array([len(subtour) for subtour in subtours])
+
+    def get_subtours_smaller_than(self, subtours, threshold):
+
+        subtour_lens = self.get_subtour_lens(subtours)
+        indices = np.argwhere(subtour_lens < threshold).flatten()
+
+        if len(indices) < 1:
+            return []
+        else:
+            return np.array(subtours)[indices]
+
+    def try_small_subtours(self, subtours):
+
+        vertices_number = len(np.unique(subtours))
+        threshold = int(vertices_number / int(np.ceil(np.log2(vertices_number))))
+        subset_tours = self.get_subtours_smaller_than(subtours, threshold)
+        if len(subset_tours) > 0:
+            return subset_tours
+
+        while len(subset_tours) < 1:
+            threshold = int(threshold * 2)
+            subset_tours = self.get_subtours_smaller_than(subtours, threshold)
+
+        return subset_tours
+    
+    def get_all_subtours(self, subtours):
+
+        return subtours
+
+
+    def get_subtours(self, subtours):
+
+        if self.cut_strategy == "small_if_possible":
+            return self.try_small_subtours(subtours)
+        else:
+            return self.get_all_subtours(subtours)
+    
+
 class xpress_constraint_callback():
 
     def __init__(self, solver, max_rounds=1e10):
@@ -78,7 +133,6 @@ class xpress_constraint_callback():
 
             ret =  self.is_tour_callback(problem=problem)
             return ret
-
         
         self.solver.problem.addcbpreintsol(callback, None, 1)
 
@@ -277,7 +331,10 @@ class scip_constraint_handler(Conshdlr):
             return False
         elif checkonly:
             return True
-        for S in components:
+
+        subtour_selector = subtourStrategy(cut_strategy=self.solver.cut_strategy)
+        
+        for S in subtour_selector.get_subtours(components):
             varnames = ["x_{},{}".format(i, j) for i in S
                         for j in S if j > i and "x_{},{}".format(i, j) in keys]
             self.model.addCons(quicksum(self.solver.variable_dict[name] for
