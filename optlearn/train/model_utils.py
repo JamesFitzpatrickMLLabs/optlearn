@@ -93,6 +93,7 @@ class modelPersister():
         persist_dict = joblib.load(fname)
         self.set_model(self._get_model(persist_dict))
         self.set_metadata(self._get_metadata(persist_dict))
+        self.set_function_names(self._get_function_names(self._get_metadata(persist_dict)))
 
 
         
@@ -116,6 +117,9 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
             new_graph.add_edge(*edge, **graph[edge[0]][edge[1]])
         return new_graph
 
+    def _set_funcs(self):
+        """ Get the function names """
+    
     def _set_device(self):
         """ Set the device """
 
@@ -203,8 +207,8 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         """ Prune the graph, re-adding edges using logical rules """
 
         pruned_graph = self.prune_graph(original_graph)
-        fixed_graph = fix_model.ensure_minimum_degree(original_graph, pruned_graph)
-        fixed_graph = fix_model.ensure_connected(original_graph, fixed_graph)
+        # fixed_graph = fix_model.ensure_minimum_degree(original_graph, pruned_graph)
+        # fixed_graph = fix_model.ensure_connected(original_graph, fixed_graph)
         return fix_model.ensure_doubletree(original_graph, fixed_graph)
 
     def _detect_graph(self, object):
