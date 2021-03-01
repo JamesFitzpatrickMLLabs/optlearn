@@ -38,7 +38,8 @@ def add_node_requests(graph, info_dict):
     """ Add the requests from the info_dict to the nodes in the graph """
 
     requests = info_dict["requests"]
-    nx.set_node_attributes(graph, requests, "demand")
+    requests = {key: {"demand": value} for (key, value) in requests.items()}
+    nx.set_node_attributes(graph, requests)
     return graph
 
 
