@@ -29,11 +29,6 @@ def define_edge_term(variable_dict, graph, edge, prefix="x",
     """ Define a single edge term in the objective """
 
     weight = graph_utils.get_edge_weight(graph, *edge)
-    if max_weight is None:
-        max_weight = weight
-    if perturb:
-        weight = weight + weight / max_weight * np.random.randn() * 4
-        weight = np.clip(weight, 0, np.inf)
     name = name_variable(edge, prefix=prefix)
     return compute_edge_term(weight, variable_dict[name])
 
@@ -45,8 +40,9 @@ def define_edge_objective(variable_dict, graph, perturb=False):
     if perturb:
         perturbs = ((weights - weights.mean())/weights.mean()) ** 2
         perturbs  = np.clip(perturbs * 2 -1, -1, 1)
-        randoms = np.random.uniform(size=len(weights))
-        weights = weights + weights * perturbs * randoms / 3
+        randoms = np.random.uniform(low=0, high=0.3, size=len(weights))
+        perturbs = np.ones_like(randoms)
+        weights = weights + weights * perturbs * randoms
     variables = [variable_dict["x_{},{}".format(*edge)] for edge in graph.edges]
     return [var * weight for (var, weight) in zip(variables, weights)]
 
