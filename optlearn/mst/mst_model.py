@@ -6,13 +6,9 @@ import numpy as np
 
 from optlearn import graph_utils
 
+from optlearn.fix import fix_utils
 
 class edgeSparsifier():
-
-    def copy_graph(self, graph):
-        """ Copy the given graph """
-
-        return copy.deepcopy(graph)
 
     def remove_edges(self, graph, edges):
         """ Remove the given edges from the graph """
@@ -20,10 +16,11 @@ class edgeSparsifier():
         graph.remove_edges_from(edges)
         return graph
         
-    def sparsify_once(self, graph, edge_extracter, weight="weight"):
+    def sparsify_once(self, graph, storage_graph, edge_extracter, weight="weight"):
         """ Sparsify the graph by removing edges identified by the extracter """
 
         edges = edge_extracter(graph, weight=weight)
+        storage_graph = fix_utils.migrate_edges(graph, storage_graph, edges)
         self.remove_edges(graph, edges)
         
         return edges
@@ -34,12 +31,16 @@ class edgeSparsifier():
         sparsified_edges = []
 
         self.check_weight_key(graph, weight=weight)
-        graph = self.copy_graph(graph)
+
+        storage_graph = nx.Graph()
         
         for iteration in range(iterations):
-            edges = self.sparsify_once(graph, edge_extracter, weight=weight)
+            print(len(graph.edges))
+            edges = self.sparsify_once(graph, storage_graph, edge_extracter, weight=weight)
             sparsified_edges.append(edges)
 
+        graph = fix_utils.migrate_edges(storage_graph, graph, storage_graph.edges)
+            
         return sparsified_edges
     
 
@@ -48,7 +49,7 @@ class mstConstructor():
     def minimum_spanning_tree(self, graph, weight="weight"):
         """ Compute the minimum spanning tree graph """
 
-        return nx.minimum_spanning_tree(graph, weight=weight)
+        return nx.minimum_spanning_tree(graph, weight=weight, algorithm="prim")
 
     def minimum_spanning_tree_edges(self, graph, weight="weight"):
         """ Compute the minimum spanning tree graph """
