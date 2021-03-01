@@ -370,7 +370,7 @@ def compute_fi_edges(graph):
     return costs / costs.max()
 
 
-def compute_fj_edges(graph):
+def compute_fj_edges(graph, rounds=None, perturb=True):
     """ Compute the bet-and-run relaxation reduced costs for each edge """
 
     problem = mip_model.tspProblem(
@@ -379,9 +379,10 @@ def compute_fj_edges(graph):
         graph=graph,
         verbose=False,
         shuffle_columns=False,
-        perturb=True,
+        perturb=perturb,
     )
-    rounds = int(np.ceil(np.log2(len(graph.edges))))
+    if rounds is None:
+        rounds = int(np.ceil(np.log2(len(graph.edges))))
     costs = []
 
     for i in range(rounds):
@@ -389,8 +390,8 @@ def compute_fj_edges(graph):
         costs.append(problem.get_redcosts())
         problem.problem.freeTransform()
         problem.set_objective(graph)
-    costs = np.sum(costs, axis=0)
-    return costs / costs.max()
+        costs = [(np.array(item) / np.max(item)).tolist() for item in costs]
+        return np.mean(costs, axis=0)
 
 
 
