@@ -70,6 +70,14 @@ def get_variables(variable_dict, vertex, prefix="x"):
     return [variable_dict[key] for key in keys]
 
 
+def get_variables_quick(variable_dict, vertices, vertex, prefix):
+    """ Quick search for the edges associated with this vertex """
+
+    keys = ["{}_{},{}".format(prefix, *order(vertex, j)) for j in vertices if j != vertex]
+    gets = [variable_dict.get(key) for key in keys]
+    return [item for item in gets if item is not None]
+
+
 def get_outward_variables(variable_dict, vertex, prefix="x"):
     """ Get the outward variables for a vertex """
 
@@ -155,6 +163,16 @@ def all_values_integer(values):
     """ Check if all given values are integer """
 
     return np.all([item.is_integer() for item in values])
+
+
+def order(i, j):
+    """ Return (i, j) if i < j, otherwise (j, i) """
+
+    if i < j:
+        return (i, j)
+    else:
+        return (j, i)
+    
 
 _operators = {
     "+": operator.add,
