@@ -59,12 +59,14 @@ class tspProblem():
                  verbose=False,
                  shuffle_columns=False,
                  perturb=False,
+                 get_quick=True,
                  cut_strategy="small_if_possible"
     ):
         """ Setup problem """
 
         self.verbose = verbose
         self.perturb = perturb
+        self.get_quick = get_quick
         self.shuffle_columns = shuffle_columns
         self.times_optimised = 0
         self.cut_strategy = cut_strategy
@@ -88,7 +90,7 @@ class tspProblem():
 
     def initialise_vertices(self, graph):
         """ Grab a list of the vertices from the graph """
-
+        
         self.vertices = graph_utils.get_vertices(graph)
 
     def initialise_min_vertex(self, graph):
@@ -128,6 +130,7 @@ class tspProblem():
     def initialise_problem(self):
         """ Setup the problem and add as an attribute """
 
+        print("Building problem!")
         self.problem = self._funcs["build_problem"]()
 
     def create_variable(self, edge, prefix="x", var_args=None):
@@ -146,6 +149,7 @@ class tspProblem():
     def set_edge_variables(self, graph):
         """ Create and set all TSP edge variables """
 
+        print("Setting variables!")
         if self.shuffle_columns:
             for edge in random.sample(graph.edges, len(graph.edges)):
                 self.set_variable(edge, prefix="x", var_args=self._var_args)
@@ -168,6 +172,7 @@ class tspProblem():
     def set_objective(self, graph):
         """ Set the objective function """
 
+        print("Setting objective!")
         if self.formulation == "dantzig":
             self._funcs["edge_objective"](self.problem,
                                           self.variable_dict,
@@ -194,7 +199,10 @@ class tspProblem():
     def get_variables_sum(self, vertex, prefix="x"):
         """ Get all variables that have a given vertex and sum them """
 
-        vars = mip_utils.get_variables(self.variable_dict, vertex, prefix)
+        if self.get_quick:
+            vars = mip_utils.get_variables_quick(self.variable_dict, self.vertices, vertex, prefix)
+        else:
+            vars = mip_utils.get_variables(self.variable_dict, vertex, prefix)
         return self._funcs["sum"](vars)
         
     def get_inward_variables_sum(self, vertex, prefix="x"):
@@ -244,8 +252,10 @@ class tspProblem():
     def set_constraints(self):
         """ Define the outward and inward constraints for all vertices """
 
+        print("Setting constraints!")
         if self.formulation == "dantzig":
             self.set_dantzig_constraints()
+            print("Constraints set!")
             return None
         print("No constraints set!")
         
@@ -397,6 +407,8 @@ class tspProblem():
     def optimise(self, max_nodes=1e10, max_rounds=1e10):
         """ Solve the problem """
 
+        print("Solving problem!")
+        
         self.counter = 0
         self.solutions = []
         
@@ -778,6 +790,8 @@ class cvrpProblem():
 
     def optimise(self, max_nodes=1e10, max_rounds=1e10):
         """ Solve the problem """
+
+        print("Solving problem!")
         
         self.counter = 0
         self.solutions = []
