@@ -21,7 +21,8 @@ class buildFeatures():
         
     def compute_feature(self, graph, func):
         """ Compute a specific feature for the graph """
-        
+
+        print(func)
         return func(graph)
 
     def compute_features(self, graph):
