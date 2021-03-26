@@ -85,7 +85,7 @@ class subtourStrategy():
             return self.try_small_subtours(subtours)
         else:
             return self.get_all_subtours(subtours)
-    
+
 
 class xpress_constraint_callback():
 
@@ -98,202 +98,81 @@ class xpress_constraint_callback():
     def is_tour_callback(self, problem=None):
         """ check if the current solution gives a valid tour """
 
-        print("Called checker!")
-        
         graph = nx.Graph()
         variables = list(self.solver.variable_dict.values())
         keys = list(self.solver.variable_dict.keys())
-                
-        
+
+        print("Check callback!")
         solution = []
         try:
             problem.getlpsol(solution, None, None, None)
         except:
             return (True, None)
-                
-        indices = [num for num, item in enumerate(solution) if item >= 0.001]
+        
+        indices = [num for num, item in enumerate(solution) if item > 0.0001]
         unit_edges = [mip_utils.get_variable_tuple(variables[index].name)
                          for index in indices]
         
         graph.add_edges_from(unit_edges)
         components = list(nx.connected_components(graph))
-
         try:
             cycle = nx.cycles.find_cycle(graph)
         except:
             return (True, None)
-        
+
         return (len(components) > 1, None)
-            
+
     def add_tour_callback(self):
         """ add the tour callback to the solver """
-        
+
         def callback(problem, graph, isheuristic, cutoff):
             """ callback to check the existence of subtours """
 
             ret =  self.is_tour_callback(problem=problem)
             return ret
-        
+
         self.solver.problem.addcbpreintsol(callback, None, 1)
 
     def cut_callback(self, problem):
         """ build the cuts for the cutting callback """
 
-        print("Called cutter!")
-        
-        graph = nx.Graph()
+        if self.solver._is_symmetric:
+            graph = nx.Graph()
+        if self.solver._is_asymmetric:
+            graph = nx.DiGraph()
+
         variables = list(self.solver.variable_dict.values())
         keys = list(self.solver.variable_dict.keys())
 
         solution = []
-        
+
+        print("Cut callback!")
         try:
             self.solver.problem.getlpsol(solution, None, None, None)
         except:
-            return False
-        
-        indices = [num for num, item in enumerate(solution) if item >= 0.001]
-        unit_edges = [mip_utils.get_variable_tuple(variables[index].name)
-                         for index in indices]
-        graph.add_edges_from(unit_edges)
-
+            return 0
         self.solver.solutions.append(solution)
         
-        try:
-            cycle = nx.cycles.find_cycle(graph)
-            print("Cycle found!")
-        except:
-            return False
+        edges = [mip_utils.get_variable_tuple(key) for key in keys]
+        tuples = [(*edge, value) for (edge, value) in zip(edges, np.abs(solution))]
+        
+        graph.add_weighted_edges_from(tuples)
 
-        components = list(nx.connected_components(graph))
+        cut_value, (left_set, right_set) = nx.stoer_wagner(graph)
 
-        for S in components:
-            varnames = ["x_{},{}".format(i, j) for i in S
-                        for j in S if j > i and "x_{},{}".format(i, j) in keys]
+        if len(left_set) < len(right_set):
+            cut_set = left_set
+        else:
+            cut_set = right_set
+
+        if cut_value < 1.99:
+            varnames = ["x_{},{}".format(i, j) for i in cut_set
+                        for j in cut_set if j > i and "x_{},{}".format(i, j) in keys]
             variables = [self.solver.variable_dict[item] for item in varnames]
             xpress.add_mincut(self.solver.problem, variables, self.solver.variable_dict)
 
-    def add_cut_callback(self):
-        """ add the cutting callback to the optimiser """
-        
-        def callback(problem, graph):
-            """ perform the subtour cutting """
-
-            return self.cut_callback(problem)
-            
-        self.solver.problem.addcboptnode(callback, None, 1)
-        
-
-
-class crap_constraint_callback():
-
-    def __init__(self, solver, max_rounds=1e10):
-        self.solver = solver
-        self.max_rounds = max_rounds
-        self.round_counter = 0
-        self.is_optimal = False
-
-    def reverse(self, i, j):
-
-        if i < j:
-            return (i, j)
-        else:
-            return (j, i)
-
-    def is_tour_callback(self, problem=None):
-        """ check if the current solution gives a valid tour """
-
-        variables = list(self.solver.variable_dict.values())
-        keys = list(self.solver.variable_dict.keys())
-        
-        s = []
-
-        print("Calling!")
-        
-        try:
-            problem.getlpsol(s, None, None, None)
-        except:
-            return (True, None) 
-
-        orignode = 1
-        nextnode = 1
-        card = 0
-
-        while nextnode != orignode or card == 0:
-
-            FS = [j for j in self.solver.vertices if j != nextnode and
-                  s[keys.index("x_{},{}".format(*self.reverse(j, nextnode)))] == 1]
-            card += 1
-            
-            if len(FS) < 1:
-                return (True, None)
-
-            nextnode = FS[0]
-
-        return (card < len(self.solver.vertices), None)
-                    
-    def add_tour_callback(self):
-        """ add the tour callback to the solver """
-        
-        def callback(problem, graph, isheuristic, cutoff):
-            """ callback to check the existence of subtours """
-
-            return self.is_tour_callback(problem=problem)
-        
-        self.solver.problem.addcbpreintsol(callback, None, 1)
-
-    def cut_callback(self, problem):
-        """ build the cuts for the cutting callback """
-
-        print("Cutting!")
-        
-        graph = nx.Graph()
-        variables = list(self.solver.variable_dict.values())
-        keys = list(self.solver.variable_dict.keys())
-
-        s = []
-
-        try:
-            problem.getlpsol(s, None, None, None)
-        except:
-            return 0
-
-        orignode = 1
-        nextnode = 1
-        
-        connset = []
-
-        while nextnode != orignode or len(connset) == 0:
-            
-            connset.append(nextnode)
-
-            FS = [j for j in self.solver.vertices if j != nextnode and
-                  s[keys.index("x_{},{}".format(*self.reverse(j, nextnode)))] == 1]
-
-            if len(FS) < 1:
-                return 0
-
-            nextnode = FS[0]
-
-        if len(connset) < len(self.solver.vertices):
-
-            if len(connset) <= len(self.solver.vertices)/2:
-                columns = [variables[keys.index("x_{},{}".format(i, j))] for i in connset
-                           for j in connset if i < j]
-                nArcs = len(connset)
-            else:
-                columns = [variables[keys.index("x_{},{}".format(i, j))]
-                           for i in self.solver.vertices for j in self.solver.vertices
-                           if i not in connset and
-                           j not in connset and i < j]
-                nArcs = len(self.solver.vertices) - len(connset)
-
-            nTerms = len(columns)
-                
-            problem.addcuts([1], ['L'], [nArcs - 1],
-                     [0, nTerms], columns, [1] * nTerms)
-
         return 0
+            
 
     def add_cut_callback(self):
         """ add the cutting callback to the optimiser """
@@ -304,8 +183,7 @@ class crap_constraint_callback():
             return self.cut_callback(problem)
             
         self.solver.problem.addcboptnode(callback, None, 1)
-
-
+        
         
 class scip_constraint_handler(Conshdlr):
 
@@ -335,8 +213,12 @@ class scip_constraint_handler(Conshdlr):
         subtour_selector = subtourStrategy(cut_strategy=self.solver.cut_strategy)
         
         for S in subtour_selector.get_subtours(components):
-            varnames = ["x_{},{}".format(i, j) for i in S
-                        for j in S if j > i and "x_{},{}".format(i, j) in keys]
+            if self.solver._is_symmetric:
+                varnames = ["x_{},{}".format(i, j) for i in S
+                            for j in S if j > i and "x_{},{}".format(i, j) in keys]
+            if self.solver._is_asymmetric:
+                varnames = ["x_{},{}".format(i, j) for i in S
+                            for j in S if "x_{},{}".format(i, j) in keys]                
             self.model.addCons(quicksum(self.solver.variable_dict[name] for
                                         name in varnames) <= len(S) - 1)
         self.round_counter += 1
