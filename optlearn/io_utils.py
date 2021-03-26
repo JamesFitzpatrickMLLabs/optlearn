@@ -99,6 +99,8 @@ class optObject():
 
         self._graph = self._problem.get_graph()
         self._graph = graph_utils.delete_self_weights(self._graph)
+        if hasattr(self._problem, "node_coords"):
+            self._graph.graph["coord_dict"] = self._problem.node_coords
 
     def get_graph(self):
         """ Get the graph """
