@@ -1,0 +1,25 @@
+{
+   "feature_dirs":[
+      "fa",
+      "fb",
+      "fc",
+      "fd",
+      "fe",
+      "ff",
+      "fg",
+      "fh",
+      "fi"
+   ],
+   "solution_dir":"solutions",
+   "train_test_val_split":{
+      "train":"1",
+      "test":"0",
+      "val":"0"
+   },
+   "undersampling_strategy":{
+      "sampling_strategy":"auto"
+   },
+   "oversampling_strategy":{
+      "sampling_strategy":"auto"
+   }
+}
