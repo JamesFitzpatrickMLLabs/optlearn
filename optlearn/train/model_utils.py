@@ -10,10 +10,11 @@ from optlearn.fix import fix_model
 
 class modelPersister():
 
-    def __init__(self, model=None, function_names=None):
+    def __init__(self, model=None, function_names=None, threshold=None):
         
         self.model = model
         self.function_names = function_names
+        self.threshold = threshold
 
     def set_metadata(self, meta_dict):
         """ Set all the given metadata """
@@ -76,7 +77,8 @@ class modelPersister():
 
         return {
             "model": self.model,
-            "metadata": self._build_meta_dict()
+            "metadata": self._build_meta_dict(),
+            "threshold": self.threshold,
             }
         
     def save(self, fname):
@@ -99,10 +101,11 @@ class modelPersister():
         
 class modelWrapper(feature_utils.buildFeatures, modelPersister):
 
-    def __init__(self, model=None, function_names=None):
+    def __init__(self, model=None, function_names=None, threshold=None):
 
         self.model = model
         self.function_names = function_names
+        self.threshold  = threshold
         self.get_funcs()
         self._set_device()
 
@@ -147,11 +150,11 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         return ret
 
     def _normalise(self, X):
-        """ Perform softmax over the given array """
+        """ Perform a normalisation over the given array """
 
         return (X - X.min()) / (X.max() - X.min())
-        
-    def _predict_torch(self, X):
+
+    def _predict_proba_torch(self, X):
         """ Make a prediction using a torch model """
 
         if self._check_cudas():
@@ -160,14 +163,25 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
         else:
             y = self.model(torch.tensor(X).float())
             return y.data.numpy()
+    
+    def _predict_torch(self, X):
+        """ Make a prediction using a torch model """
 
+        if self.threshold is None:
+            return (self._predict_proba_torch(X) > 0.5).astype(int)
+        else:
+            return (self._predict_proba_torch(X) > self.threshold).astype(int)
+        
     def predict_vector(self, X):
         """ Make a prediction on a vector, outputs vector """
 
         if hasattr(self.model, "parameters"):
             return self._predict_torch(X)
         else:
-            return self.model.predict(X)
+            if self.threshold is not None:
+                return (self.predict_proba_vector(X) > self.threshold)
+            else:
+                return self.model.predict(X)
 
     def predict_proba_vector(self, X):
         """ Make a prediction on a vector, outputs vector """
