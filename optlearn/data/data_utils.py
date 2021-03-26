@@ -5,11 +5,12 @@ import numpy as np
 import networkx as nx
 
 from optlearn import io_utils
-from optlearn import cc_solve
 from optlearn import graph_utils
 
 from optlearn.feature import features
 from optlearn.feature import feature_utils
+from optlearn.data import compute_solutions
+
 from sklearn.model_selection import train_test_split
 
 
@@ -123,16 +124,11 @@ class createTrainingFeatures(feature_utils.buildFeatures):
     def compute_labels_from_problem(self, problem_fname):
         """ Using the problem file, compute the labels """
         
-        tour = cc_solve.solution_from_path(problem_fname).tour
-        edges = graph_utils.get_tour_edges(tour)
-        min_vertex = np.min(self._graph.nodes)
-        order = len(self._graph.nodes)
-        indices = [graph_utils.compute_vector_index_symmetric(edge, order, min_vertex)
-                   for edge in edges]
-        vector = np.zeros((len(self._graph.edges)))
-        vector[indices] = 1
-        return vector
+        object = io_utils.optObject().read_problem_from_file(problem_fname)
+        graph = object.get_graph()
 
+        return compute_solutions.get_all_optimal_tsp_solutions(graph)
+        
     def compute_labels_from_solution(self, solution_fname):
         """ Using the solution file, read the solution in """
 
