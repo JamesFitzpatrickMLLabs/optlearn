@@ -7,7 +7,9 @@ import argparse
 import numpy as np
 
 from sklearn.svm import SVC, LinearSVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import RidgeClassifier
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
 
@@ -20,11 +22,16 @@ models = {
     "logreg": LogisticRegression,
     "linear_svc": LinearSVC,
     "svc": SVC,
+    "knn": KNeighborsClassifier,
+    "ridge": RidgeClassifier,
 }
 
 param_jsons = {
     "logreg": "jsons/logreg_params.json",
-    "linear_svc": "jsons/linear_svc_params.json"
+    "linear_svc": "jsons/linear_svc_params.json",
+    "svc": "jsons/linear_svc_params.json",
+    "knn": "jsons/knn_params.json",
+    "ridge": "jsons/ridge_params.json",
 }
 
 
@@ -117,6 +124,8 @@ def setup_training_params(train_files_parent_path, train_param_json_path=None):
                                       for item in parameters["feature_dirs"]]
         parameters["solution_dir"] = os.path.join(train_files_parent_path,
                                                    parameters["solution_dir"])
+        parameters["weight_dir"] = os.path.join(train_files_parent_path,
+                                                   parameters["weight_dir"])
     except Exception as exception:
         print("Unknown error trying to build the features/solution file paths!")
         raise exception
@@ -131,22 +140,29 @@ def setup_training_params(train_files_parent_path, train_param_json_path=None):
     return parameters
 
 
-def train_sparsifier(train_files_parent_path, model_name=None, model_param_json_path=None,
-                     train_param_json_path=None, model_save_path=None, threshold=None):
+def train_sparsifier(train_files_parent_path, model_name=None,
+                     model_param_json_path=None, train_param_json_path=None,
+                     model_save_path=None, threshold=None, sample_weights=None):
     """ Train the sparsifier on the MATILDA problem set, given some parameters """
 
     model = select_model(model_name)
     model = setup_model(model, model_param_json_path)
     train_params = setup_training_params(train_files_parent_path, train_param_json_path)
 
-    train_matcher = data_utils.dataMatcher(train_params["feature_dirs"],
-                                           train_params["solution_dir"])
-    train_pairs = train_matcher.build_fname_pairs()
-    train_pairs = [item for item in train_pairs
-                   if ("CLKhard" in item[1]) or ("LKCChard" in item[1])]
+    if sample_weights is None:
+        train_matcher = data_utils.dataMatcher(train_params["feature_dirs"],
+                                               train_params["solution_dir"],
+        )
+        train_tuples = train_matcher.build_fname_pairs()
+    else:
+        train_matcher = data_utils.dataMatcher(train_params["feature_dirs"],
+                                               train_params["solution_dir"],
+                                               train_params["weight_dir"],
+        )
+        train_tuples = train_matcher.build_fname_triples()
 
-    train_loader = data_utils.dataLoader(train_pairs)
-    train_loader.train_test_val_split(0.5, 0.25, 0.25)
+    train_loader = data_utils.dataLoader(train_tuples)
+    train_loader.train_test_val_split(0.85, 0.10, 0.05)
 
     if threshold is None:
         print("No threshold given!")
@@ -169,9 +185,15 @@ def train_sparsifier(train_files_parent_path, model_name=None, model_param_json_
 
     X_train, y_train = train_loader.load_training_features(), train_loader.load_training_labels()
     X_train, y_train = np.vstack(X_train), np.concatenate(y_train)
-    X_train, y_train = sampler.fit_resample(X_train, y_train)
+    # X_train, y_train = sampler.fit_resample(X_train, y_train)
 
-    model.fit(X_train, y_train)
+    if sample_weights is not None:
+        z_train = np.concatenate(train_loader.load_training_weights())
+        print(z_train.shape)
+        # z_train, y_train = sampler.fit_resample(z_train, y_train)
+        model.fit(X_train, y_train, z_train)
+    else:
+        model.fit(X_train, y_train)
 
     wrapper = model_utils.modelWrapper(model=model, function_names=function_names,
                                        threshold=threshold)
@@ -211,5 +233,6 @@ if __name__ is not "__main__":
     parser.add_argument("-f", "--train_files_parent_path", nargs="?", required=True)
     parser.add_argument("-s", "--model_save_path", nargs="?", default=None)
     parser.add_argument("-y", "--threshold", nargs="?", default=None)
+    parser.add_argument("-w", "--sample_weights", nargs="?", default=None)
     
     train_sparsifier(**vars(parser.parse_args()))
