@@ -127,10 +127,16 @@ def get_redcosts_by_name(problem, variable_dict, variable_keys):
 
 
 def get_objective_value(problem):
-    """ get the current objective value of the problem """
+    """ Get the current objective value of the problem """
 
     return problem.getObjVal()
 
+
+def add_solution(problem, solution):
+    """ Add the given solution to the problem """
+
+    raise NotImplementedError
+    
 
 _funcs = {
     "create_variable": create_variable,
@@ -142,6 +148,7 @@ _funcs = {
     "solve_problem": solve_problem,
     "get_varnames": get_varnames,
     "get_varvals": get_varvals,
+    "get_solution": get_varvals,
     "get_varvals_by_name": get_varvals_by_name,
     "get_solvals": get_solvals,
     "get_varval": get_varval,
@@ -150,4 +157,5 @@ _funcs = {
     "get_redcost": get_redcost,
     "get_objective_value": get_objective_value,
     "sum": scip_sum,
+    "add_solution": add_solution,
     }
