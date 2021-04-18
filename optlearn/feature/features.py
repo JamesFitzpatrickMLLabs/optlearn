@@ -342,32 +342,59 @@ def compute_fg_edges(graph):
 
 
 def compute_fh_edges(graph):
-    """ Compute the root relxation features for each edge """
+    """ Compute the cutting solution features for each edge """
 
     problem = mip_model.tspProblem(
         solver="scip",
         var_type="continuous",
         graph=graph,
-        verbose=False
+        verbose=False,
+        get_quick=True,
     )
 
-    problem.optimise(max_rounds=7)
+    rounds = int(np.ceil(np.log2(len(graph.edges))))
+    problem.optimise(max_rounds=rounds)
     return problem.get_varvals()
 
 
-def compute_fi_edges(graph):
-    """ Compute the root relxation features for each edge """
+def compute_fi_edges_scip(graph):
+    """ Compute the cutting reduced cost features for each edge """
 
     problem = mip_model.tspProblem(
         solver="scip",
         var_type="continuous",
         graph=graph,
-        verbose=False
+        verbose=False,
+        get_quick=True,
     )
 
-    problem.optimise(max_rounds=7)
+    rounds = int(np.ceil(np.log2(len(graph.edges))))
+    problem.optimise(max_rounds=rounds)
     costs = np.array(problem.get_redcosts())
     return costs / costs.max()
+
+
+def compute_fi_edges_xpress(graph):
+    """ Compute the cutting reduced cost features for each edge """
+
+    problem = mip_model.tspProblem(
+        solver="xpress",
+        var_type="binary",
+        graph=graph,
+        verbose=False,
+        get_quick=True,
+    )
+    
+    rounds = int(np.ceil(np.log2(len(graph.edges))))
+    
+    problem.optimise(max_rounds=rounds)
+    costs = np.array(problem.get_redcosts())
+    return costs / costs.max()
+
+
+def compute_fi_edges(graph):
+
+    return compute_fi_edges_scip(graph)
 
 
 def compute_fj_edges(graph, rounds=None, perturb=True):
@@ -380,7 +407,9 @@ def compute_fj_edges(graph, rounds=None, perturb=True):
         verbose=False,
         shuffle_columns=False,
         perturb=perturb,
+        get_quick=True,
     )
+    
     if rounds is None:
         rounds = int(np.ceil(np.log2(len(graph.edges))))
     costs = []
@@ -391,6 +420,7 @@ def compute_fj_edges(graph, rounds=None, perturb=True):
         problem.problem.freeTransform()
         problem.set_objective(graph)
         costs = [(np.array(item) / np.max(item)).tolist() for item in costs]
+        print(len(costs))
         return np.mean(costs, axis=0)
 
 
