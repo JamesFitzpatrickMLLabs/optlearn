@@ -105,7 +105,7 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
 
         self.model = model
         self.function_names = function_names
-        self.threshold  = threshold
+        self.threshold = threshold
         self.get_funcs()
         self._set_device()
 
@@ -210,6 +210,8 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
     def prune_graph(self, graph, threshold=None):
         """ Prune thes the given graph, returning a graph """
 
+        threshold = threshold or self.threshold
+        
         X = self.compute_features(graph)
         if threshold is None:
             y = self.predict_vector(X)
@@ -217,13 +219,13 @@ class modelWrapper(feature_utils.buildFeatures, modelPersister):
             y = (self.predict_proba_vector(X) > threshold).astype(int)
         return self._build_prediction_graph(graph, y)
 
-    def prune_graph_with_logic(self, original_graph):
+    def prune_graph_with_logic(self, original_graph, threshold=None):
         """ Prune the graph, re-adding edges using logical rules """
 
-        pruned_graph = self.prune_graph(original_graph)
-        # fixed_graph = fix_model.ensure_minimum_degree(original_graph, pruned_graph)
-        # fixed_graph = fix_model.ensure_connected(original_graph, fixed_graph)
-        return fix_model.ensure_doubletree(original_graph, fixed_graph)
+        threshold = threshold or self.threshold
+        
+        pruned_graph = self.prune_graph(original_graph, threshold)
+        return fix_model.ensure_doubletree(original_graph, pruned_graph)
 
     def _detect_graph(self, object):
         """ Check if the object is a graph """
