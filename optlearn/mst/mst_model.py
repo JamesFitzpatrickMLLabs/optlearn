@@ -262,7 +262,7 @@ class christofidesConstructor(mstConstructor):
         christofides_tour_a = self.get_christofides_tour(graph, reverse=False)
         christofides_tour_b = self.get_christofides_tour(graph, reverse=True)
 
-        return [doubletour_a, doubletour_b]
+        return [christofides_tour_a, christofides_tour_b]
 
 
 class mstSparsifier(edgeSparsifier, mstConstructor):
@@ -400,6 +400,33 @@ class doubleTreeSparsifier(edgeSparsifier, doubleTreeConstructor):
         return self.sparsify(
             graph=graph,
             edge_extracter=self.get_doubletours_edges,
+            iterations=iterations,
+            weight=weight
+        )
+
+
+class christofidesSparsifier(edgeSparsifier, christofidesConstructor):
+
+    def get_christofides_tour_edges(self, graph, weight="weight"):
+        """ Extract the doubletour edges from the graph """
+
+        tour = self.get_get_christofides_tour(graph)
+        return graph_utils.get_tour_edges(tour).tolist()
+
+    def get_christofides_tours_edges(self, graph, weight="weight"):
+        """ Extract the doubletours edges from the graph """
+
+        tours = self.get_christofides_tours(graph)
+        edges_a = graph_utils.get_tour_edges(tours[0]).tolist()
+        edges_b = graph_utils.get_tour_edges(tours[1]).tolist()
+        return edges_a + edges_b
+        
+    def run_sparsify(self, graph, iterations=0, weight="weight"):
+        """ Sparsify several times using the MST edges, returning all edges """
+
+        return self.sparsify(
+            graph=graph,
+            edge_extracter=self.get_christofides_tours_edges,
             iterations=iterations,
             weight=weight
         )
