@@ -7,10 +7,11 @@
       "fe",
       "ff",
       "fg",
-      "fh",
-      "fi"
+      "fi",
+      "fj"
    ],
    "solution_dir":"solutions",
+   "weight_dir":"sample_weights",
    "train_test_val_split":{
       "train":"1",
       "test":"0",
