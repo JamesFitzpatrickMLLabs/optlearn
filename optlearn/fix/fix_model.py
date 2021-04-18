@@ -43,12 +43,20 @@ def ensure_doubletree(original_graph, pruned_graph, iterations=None):
 
 
     if iterations is None:
-        iterations = int(np.ceil(np.log2(len(original_graph.nodes))))
+        # iterations = int(np.ceil(np.log2(len(original_graph.nodes))))
+        iterations = 1
         
     model = mst_model.doubleTreeSparsifier()
     new_edge_sets = model.run_sparsify(original_graph, iterations)
 
     for new_edges in new_edge_sets:
         pruned_graph = fix_utils.migrate_edges(original_graph, pruned_graph, new_edges)
+
+    model = mst_model.christofidesSparsifier()
+    new_edge_sets = model.run_sparsify(original_graph, iterations)
+
+    for new_edges in new_edge_sets:
+        pruned_graph = fix_utils.migrate_edges(original_graph, pruned_graph, new_edges)
+
         
     return pruned_graph 
