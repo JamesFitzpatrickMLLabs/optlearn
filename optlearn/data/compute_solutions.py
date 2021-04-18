@@ -11,7 +11,7 @@ def solve_problem(problem):
     """ Get an optimal solution to the given problem """
 
     problem.optimise()
-    return problem.get_varvals()
+    return problem.get_solution()
 
 
 def add_solutions_as_constraints(problem, solutions):
@@ -23,6 +23,14 @@ def add_solutions_as_constraints(problem, solutions):
         problem.set_constraint(lhs, len(problem.vertices) - 1, "<=")
     return problem
 
+
+def add_bound(problem, upper_bound):
+    """ Using a known solution, add an lower bound """
+
+    lhs = problem._funcs["sum"](list(problem.variable_dict.values()))
+    problem.set_constraint(lhs, upper_bound, "<=")
+    return problem
+    
 
 def solve_problem_without_previous_solutions(problem, solutions):
     """ Solve the given problem, but adding constraints to prevent previous solutions """
@@ -40,6 +48,8 @@ def get_all_optimal_tsp_solutions(graph, solver="scip"):
     
     while optimal_value == global_optimum:
         problem = mip_model.tspProblem(graph, solver=solver, var_type="binary")
+        # problem._funcs["add_solution"](problem.problem, solutions[0])
+        # problem = add_bound(problem, global_optimum)
         solution = solve_problem_without_previous_solutions(problem=problem,
                                                             solutions=solutions)
         optimal_value = problem.get_objective_value()
