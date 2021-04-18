@@ -172,6 +172,25 @@ def order(i, j):
         return (i, j)
     else:
         return (j, i)
+
+
+def get_depot_entries(depot, fleet_info):
+    """ Find out how many times a depot is entered """
+
+    return len([key for key in fleet_info.keys() if fleet_info[key]["arrival_node"] == depot])
+
+
+def get_depot_exits(depot, fleet_info):
+    """ Find out how many times a depot is exited """
+
+    return len([key for key in fleet_info.keys() if fleet_info[key]["departure_node"] == depot])
+
+    
+def get_depot_uses(depot, fleet_info):
+    """ Find out how many times a depot is used (entered or exited) """
+
+    return get_depot_exits(depot, fleet_info) + get_depot_entries(depot, fleet_info)
+    
     
 
 _operators = {
