@@ -106,6 +106,21 @@ def get_varvals(problem, variable_dict):
     return varvals
 
 
+def get_redcost(problem, variable, variable_dict):
+    """ Get a specific reduced cost value """
+
+    variable_index = list(variable_dict.keys()).index(variable.name)
+    return problem.getlpsolval(variable_index, 0)[-1]
+
+
+def get_redcosts(problem, variable_dict):
+    """ Get the current reduced cost values for a given problem """
+
+    redcosts = []
+    problem.getlpsol(dj=redcosts)
+    return redcosts
+
+
 def get_solution(problem, variable_dict):
     """ Get the current variable values for a given problem """
 
@@ -123,8 +138,9 @@ def add_mincut(problem, variables, variable_dict):
 
     varlist = list(variable_dict.values())
     varinds = [varlist.index(var) for var in variables]
-    
-    problem.addcuts([1], "L", [m - 1], [0, columns], variables, [1] * columns)
+
+    print(columns, m)
+    problem.addcuts([0], "L", [m - 1], [0, columns], variables, [1] * columns)
 
 
 def get_varvals_by_name(problem, variable_dict, variable_keys):
@@ -148,6 +164,12 @@ def get_current_solution(problem):
     return solution
 
 
+def add_solution(problem, solution):
+    """ Add the given solution to the problem """
+
+    problem.addmipsol(solution)
+
+
 _funcs = {
     "create_variable": create_variable,
     "build_problem": build_problem,
@@ -159,12 +181,15 @@ _funcs = {
     "get_varnames": get_varnames,
     "get_varvals": get_varvals,
     "get_varvals_by_name": get_varvals_by_name,
+    "get_redcost": get_redcost,
+    "get_redcosts": get_redcosts,
     "get_solution": get_solution,
     "get_current_solution": get_current_solution,
     "get_varval": get_varval,
     "sum": xpress_sum,
     "add_mincut": add_mincut,
-    "get_objective_value": get_objective_value
+    "get_objective_value": get_objective_value,
+    "add_solution": add_solution,
 }
 
     
