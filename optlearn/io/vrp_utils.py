@@ -47,7 +47,8 @@ def add_fleet_info(graph, info_dict):
     """ Add fleet information to the graph """
 
     for (vehicle, vehicle_dict) in info_dict["fleet"].items():
-        graph.graph[vehicle] = vehicle_dict 
+        graph.graph["fleet"] = {}
+        graph.graph["fleet"][vehicle] = vehicle_dict 
     return graph
 
 
@@ -87,7 +88,7 @@ def get_node_coordinates(info_dict):
     """ Get the coordinates of the given nodes """
 
     node_info = info_dict["network"]["node_info"]
-    return [node_info[key]["xy"] for key in node_info.keys()]
+    return {key: node_info[key]["xy"] for key in node_info.keys()}
 
 
 def compute_pairwise_distances(coordinates, metric, rounding, symmetric=True):
@@ -112,6 +113,13 @@ def get_complete_edges(info_dict, symmetric=True):
         return np.array(list(itertools.permutations(keys, 2)))
 
 
+def add_coordinates(graph, info_dict):
+    """ Add the node coordinates to the graph """
+
+    graph.graph["coord_dict"] = get_node_coordinates(info_dict)
+    return graph
+
+
 def add_weighted_edges(graph, edges, weights):
     """ Add the given edges to the graph with the specified weights """
 
@@ -124,6 +132,7 @@ def add_distance_edges(graph, info_dict, symmetric=True, rounding=0, metric="euc
     """ Compute and add distance weights """
 
     coordinates = get_node_coordinates(info_dict)
+    coordinates = [coordinates[key] for key in sorted(list(coordinates.keys()))]
     weights = compute_pairwise_distances(coordinates, metric=metric,
                                          rounding=rounding, symmetric=True)
     edges = map(tuple, get_complete_edges(info_dict, symmetric=symmetric))
@@ -132,6 +141,31 @@ def add_distance_edges(graph, info_dict, symmetric=True, rounding=0, metric="euc
     return graph
 
 
+def parse_vehicles(filename):
+    """ Parse the number of vehicles from the filename """
+
+    return int(filename.split(".")[0].split("-k")[1])
+
+
+def add_vehicle_count(graph, filename):
+    """ Add the number of vehicles to the graph object """
+
+    graph.graph["vehicle_num"] = parse_vehicles(filename)
+    return graph
+
+
+def check_fleet(graph):
+    """ Check if the fleet is composed on one vehicle type and duplicate if required """
+
+    vehicle_keys = list(graph.graph["fleet"].keys())
+    vehicle_num = graph.graph["vehicle_num"]
+    
+    if len(vehicle_keys) == 1 and vehicle_num > 1:
+        for num in range(graph.graph["vehicle_num"]):
+            graph.graph["fleet"][vehicle_keys[0] + num] = graph.graph["fleet"][vehicle_keys[0]]
+    return graph
+
+    
 def read_vrp_problem_from_xml(filename):
     """ Read an xml vrp problem file into a networkx graph """
 
@@ -141,6 +175,9 @@ def read_vrp_problem_from_xml(filename):
     graph = add_node_requests(graph, dict)
     graph = add_fleet_info(graph, dict)
     graph = add_distance_edges(graph, dict)
+    graph = add_vehicle_count(graph, filename)
+    graph = check_fleet(graph)
+    graph = add_coordinates(graph, dict)
     
     return graph
 
