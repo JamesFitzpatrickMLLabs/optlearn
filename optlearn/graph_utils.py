@@ -210,6 +210,15 @@ def sample_sorted_tsp_tours(graph, tours=1, ascending=True):
     return sort_tours_by_length(graph, tours, ascending=ascending)
 
 
+def largify_weights(graph, edges):
+    """ Sets weights of the given edges in a graph to large values """
+
+    vertices = get_vertices(graph)
+    for edge in edges:
+        graph[edge[0]][edge[1]]["weight"] = 10000000
+    return graph
+
+
 def infinite_self_weights(graph):
     """ Sets all of the self-weights in a graph to infinity """
 
@@ -279,6 +288,17 @@ def check_digraph(graph):
     """ Check of the graph is a directed graph """
 
     return type(graph) == nx.DiGraph()
+
+
+def logceil(graph, clip=True):
+    """ Get the ceiling of log_{2}(n) """
+
+    value = int(np.ceil(np.log2(len(graph.nodes))))
+
+    if clip:
+        return max(5, value)
+    else:
+        return value
 
 
 def build_graph_from_edges(edges, weights=None, symmetric=True):

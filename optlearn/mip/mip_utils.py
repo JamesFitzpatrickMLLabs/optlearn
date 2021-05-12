@@ -24,7 +24,8 @@ def compute_edge_term(weight, variable):
     return variable * weight
 
 
-def define_edge_term(variable_dict, graph, edge, prefix="x"):
+def define_edge_term(variable_dict, graph, edge, prefix="x",
+                     perturb=False, max_weight=None):
     """ Define a single edge term in the objective """
 
     weight = graph_utils.get_edge_weight(graph, *edge)
@@ -32,10 +33,18 @@ def define_edge_term(variable_dict, graph, edge, prefix="x"):
     return compute_edge_term(weight, variable_dict[name])
 
 
-def define_edge_objective(variable_dict, graph):
+def define_edge_objective(variable_dict, graph, perturb=False):
     """ Define all terms for the edge objective """
 
-    return [define_edge_term(variable_dict, graph, edge, prefix="x") for edge in graph.edges]
+    weights = np.array(graph_utils.get_weights(graph))
+    if perturb:
+        perturbs = ((weights - weights.mean())/weights.mean()) ** 2
+        perturbs  = np.clip(perturbs * 2 -1, -1, 1)
+        randoms = np.random.uniform(low=0, high=0.3, size=len(weights))
+        perturbs = np.ones_like(randoms)
+        weights = weights + weights * perturbs * randoms
+    variables = [variable_dict["x_{},{}".format(*edge)] for edge in graph.edges]
+    return [var * weight for (var, weight) in zip(variables, weights)]
 
 
 def get_variable_tuple(string):
@@ -59,6 +68,14 @@ def get_variables(variable_dict, vertex, prefix="x"):
     keys = [key for key in variable_dict.keys() if prefix in key]
     keys = [key for key in keys if vertex in get_edge_from_varname(key)]
     return [variable_dict[key] for key in keys]
+
+
+def get_variables_quick(variable_dict, vertices, vertex, prefix):
+    """ Quick search for the edges associated with this vertex """
+
+    keys = ["{}_{},{}".format(prefix, *order(vertex, j)) for j in vertices if j != vertex]
+    gets = [variable_dict.get(key) for key in keys]
+    return [item for item in gets if item is not None]
 
 
 def get_outward_variables(variable_dict, vertex, prefix="x"):
@@ -146,6 +163,35 @@ def all_values_integer(values):
     """ Check if all given values are integer """
 
     return np.all([item.is_integer() for item in values])
+
+
+def order(i, j):
+    """ Return (i, j) if i < j, otherwise (j, i) """
+
+    if i < j:
+        return (i, j)
+    else:
+        return (j, i)
+
+
+def get_depot_entries(depot, fleet_info):
+    """ Find out how many times a depot is entered """
+
+    return len([key for key in fleet_info.keys() if fleet_info[key]["arrival_node"] == depot])
+
+
+def get_depot_exits(depot, fleet_info):
+    """ Find out how many times a depot is exited """
+
+    return len([key for key in fleet_info.keys() if fleet_info[key]["departure_node"] == depot])
+
+    
+def get_depot_uses(depot, fleet_info):
+    """ Find out how many times a depot is used (entered or exited) """
+
+    return get_depot_exits(depot, fleet_info) + get_depot_entries(depot, fleet_info)
+    
+    
 
 _operators = {
     "+": operator.add,
