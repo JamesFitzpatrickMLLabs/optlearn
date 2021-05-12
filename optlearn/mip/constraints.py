@@ -357,6 +357,7 @@ class tsp_constraint_handler(Conshdlr):
         variables = list(self.solver.variable_dict.values())
         keys = list(self.solver.variable_dict.keys())
         solution = [self.model.getSolVal(solution, variable) for variable in variables]
+        self.solver.solutions.append(solution)
         indices = [num for num, item in enumerate(solution) if item > 0]
         nonzero_edges = [mip_utils.get_variable_tuple(variables[index].name) for index in indices]
         graph.add_edges_from(nonzero_edges)
