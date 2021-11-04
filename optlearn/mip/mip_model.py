@@ -3,7 +3,7 @@ import random
 
 import mip as mp
 import numpy as np
-import xpress as xp
+# import xpress as xp
 import networkx as nx
 
 from itertools import product
@@ -14,20 +14,20 @@ from optlearn import io_utils
 from optlearn import graph_utils
 from optlearn.mip import mip_utils
 from optlearn.mip import constraints
-from optlearn.mip import xpress
+# from optlearn.mip import xpress
 from optlearn.mip import coinor
 from optlearn.mip import scip
 
 
 _solver_modules = {
-    "xpress": xpress,
+    # "xpress": xpress,
     "coinor": coinor,
     "scip": scip,
     }
 
 
 _solver_funcs = {
-    "xpress": xpress._funcs,
+    # "xpress": xpress._funcs,
     "coinor": coinor._funcs,
     "scip": scip._funcs,
 }
@@ -401,7 +401,10 @@ class tspProblem():
             constrainer = constraints.xpress_tsp_constraint_callback(self,
                                                                  max_rounds=max_rounds)
             constrainer.add_cut_callback()
+            print("Added cut-adding callback!")
             constrainer.add_tour_callback()
+            print("Added tour-checking callback!")
+
         self.problem.solve()
 
     def optimise(self, max_nodes=1e10, max_rounds=1e10):
