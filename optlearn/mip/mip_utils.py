@@ -65,8 +65,8 @@ def get_variable(variable_dict, edge, prefix="x"):
 def get_variables(variable_dict, vertex, prefix="x"):
     """ Get all variables that have a given vertex  """
 
-    keys = [key for key in variable_dict.keys() if prefix in key]
-    keys = [key for key in keys if vertex in get_edge_from_varname(key)]
+    # keys = [key for key in variable_dict.keys() if prefix in key]
+    keys = [key for key in variable_dict.keys() if vertex in get_edge_from_varname(key)]
     return [variable_dict[key] for key in keys]
 
 

@@ -1,6 +1,7 @@
 import random
 
 import numpy as np
+import networkx as nx
 
 from optlearn import graph_utils
 
@@ -357,6 +358,22 @@ def compute_fh_edges(graph):
     return problem.get_varvals()
 
 
+def compute_fk_edges(graph):
+    """ Compute the cutting solution features for each edge """
+
+    problem = mip_model.tspProblem(
+        solver="xpress",
+        var_type="continuous",
+        graph=graph,
+        verbose=False,
+        get_quick=False,
+    )
+
+    problem.perform_relaxation()
+    costs = np.array(problem.get_redcosts())
+    return costs / costs.max()
+
+
 def compute_fi_edges_scip(graph):
     """ Compute the cutting reduced cost features for each edge """
 
@@ -365,7 +382,7 @@ def compute_fi_edges_scip(graph):
         var_type="continuous",
         graph=graph,
         verbose=False,
-        get_quick=True,
+        get_quick=False,
     )
 
     rounds = int(np.ceil(np.log2(len(graph.edges))))
@@ -382,7 +399,7 @@ def compute_fi_edges_xpress(graph):
         var_type="binary",
         graph=graph,
         verbose=False,
-        get_quick=True,
+        get_quick=False,
     )
     
     rounds = int(np.ceil(np.log2(len(graph.edges))))
@@ -407,7 +424,7 @@ def compute_fj_edges(graph, rounds=None, perturb=True):
         verbose=False,
         shuffle_columns=False,
         perturb=perturb,
-        get_quick=True,
+        get_quick=False,
     )
     
     if rounds is None:
@@ -423,6 +440,38 @@ def compute_fj_edges(graph, rounds=None, perturb=True):
         print(len(costs))
         return np.mean(costs, axis=0)
 
+
+def compute_fp_edges(graph):
+    """ Compute the product of the degree centralities for each edge """
+
+    centralities = nx.degree_centrality(graph)
+    centralities = np.array(list(centralities.values()))
+
+    if np.min(graph.nodes) > 0:
+        offset = - int(np.min(graph.nodes))
+    else:
+        offset = int(0)
+    
+    edges = np.array(list(graph.edges))
+    left_item = centralities[edges[:, 0] + offset] 
+    right_item = centralities[edges[:, 1] + offset]
+    product = left_item * right_item 
+
+    return product / product.max() 
+
+
+def compute_fm_edges(graph, max_iter=1000):
+    """ Compute the product of the eigen centralities for each edge """
+
+    centralities = nx.eigenvector_centrality(graph, max_iter=max_iter)
+    centralities = np.array(list(centralities.values()))
+    
+    edges = np.array(list(graph.edges))
+    left_item = centralities[edges[:, 0]] 
+    right_item = centralities[edges[:, 1]]
+    product = left_item * right_item 
+
+    return product / product.max() 
 
 
 
@@ -454,5 +503,8 @@ functions = {
     "compute_fh_edges": compute_fh_edges,
     "compute_fi_edges": compute_fi_edges,
     "compute_fj_edges": compute_fj_edges,
+    "compute_fk_edges": compute_fk_edges,
+    "compute_fp_edges": compute_fp_edges,
+    "compute_fm_edges": compute_fm_edges,    
     }
 
