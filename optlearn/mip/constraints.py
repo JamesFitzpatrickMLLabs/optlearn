@@ -1,5 +1,5 @@
 import numpy as np
-import xpress as xp
+# import xpress as xp
 import networkx as nx
 import binpacking as bp
 
@@ -9,7 +9,7 @@ from optlearn import io_utils
 from optlearn import plotting
 
 from optlearn.mip import mip_utils
-from optlearn.mip import xpress
+# from optlearn.mip import xpress
 from optlearn.mip import scip
 
 
@@ -62,6 +62,7 @@ class subtourStrategy():
 
     def try_small_subtours(self, subtours):
 
+        # print("Figuring out which subtours to generate...")
         vertices_number = len(np.unique(subtours))
         threshold = int(vertices_number / int(np.ceil(np.log2(vertices_number))))
         subset_tours = self.get_subtours_smaller_than(subtours, threshold)
@@ -161,6 +162,7 @@ class xpress_tsp_constraint_callback():
     def _build_integer_nonzero_solution_graph(self):
         """ Build a solution graph with unit edges  """
 
+        # print("Building solution supprot graph...")
         graph = self._set_graph()
         unit_edges = self._get_nonzero_edges()
         graph.add_edges_from(unit_edges)
@@ -169,6 +171,7 @@ class xpress_tsp_constraint_callback():
     def _check_hamiltonian_tour(self, graph):
         """ Check if the graph admits a hamiltonian tour """
 
+        # print("Checking if solution is a tour...")
         try:
             cycle = nx.cycles.find_cycle(graph)
         except Exception as exception:
@@ -187,6 +190,7 @@ class xpress_tsp_constraint_callback():
     def _check_connected(self, graph):
         """ Given a solution graph, check if it is connected """
 
+        # print("Checking connectedness of solution support graph...")
         if self.solver._is_symmetric:
             return nx.is_connected(graph)
         if self.solver._is_asymmetric:
@@ -195,6 +199,7 @@ class xpress_tsp_constraint_callback():
     def get_subtour_variables(self, subtour):
         """ Given the vertices of the subtour, get the edge variables in the cut """
 
+        # print("Getting subtour variables...")
         if self.solver._is_symmetric:
             varnames = ["x_{},{}".format(i, j) for i in subtour
                         for j in subtour if i < j and "x_{},{}".format(i, j) in self.keys]
@@ -221,6 +226,7 @@ class xpress_tsp_constraint_callback():
     def _cut_disconnected(self, problem, graph, subtour_selector):
         """ Given a disconnected graph, perform subtour cuts """
 
+        # print("Cutting disconnected solution...")
         if self.solver._is_symmetric:
             components = nx.connected_components(graph)
         if self.solver._is_asymmetric:
@@ -232,6 +238,7 @@ class xpress_tsp_constraint_callback():
     def _cut_connected(self, problem, graph):
         """ Given a connected graph, perform subtour cut, using Stoer-Wagner to separate """
 
+        # print("Cutting connected solution...")
         cut_value, (left_set, right_set) = nx.stoer_wagner(graph)
 
         if len(left_set) < len(right_set):
