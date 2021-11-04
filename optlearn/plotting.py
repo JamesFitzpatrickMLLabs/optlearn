@@ -40,7 +40,7 @@ def get_x_y_lists(coord_dict, indices=None):
     return  coords_x, coords_y
 
 
-def plot_vertices(coord_dict, indices=None, withlabels=True):
+def plot_vertices(coord_dict, indices=None, withlabels=True, colour="purple"):
     """ Plot the the vertices at the given coordinates """
 
     indices = coord_dict.keys()
@@ -49,9 +49,9 @@ def plot_vertices(coord_dict, indices=None, withlabels=True):
 
     if withlabels:
         for a, b, k in zip(coords_x, coords_y, coord_dict.keys()):
-            plt.text(a, b, k, color="purple")
+            plt.text(a, b, k, color=colour)
 
-def plot_tour(coord_dict, tour, withlabels=True):
+def plot_tour(coord_dict, tour, withlabels=True, edge_colour="green"):
     """ Plot the tour for a given object problem instance """
 
     check_indices(coord_dict, tour)
@@ -60,10 +60,10 @@ def plot_tour(coord_dict, tour, withlabels=True):
     tour_x, tour_y = get_x_y_lists(coord_dict, appended_tour)
 
     plot_vertices(coord_dict, withlabels=withlabels)
-    plt.plot(tour_x, tour_y, color="green")
+    plt.plot(tour_x, tour_y, color=edge_colour)
     
 
-def plot_edges(coord_dict, edges, weights=None, withlabels=True):
+def plot_edges(coord_dict, edges, weights=None, withlabels=True, edge_colour="black"):
     """ Plot the given edges and their weights for a given object problem instance """
 
     check_indices(coord_dict, edges)
@@ -77,7 +77,7 @@ def plot_edges(coord_dict, edges, weights=None, withlabels=True):
         if weight > 0:
             xs = (coord_dict[edge[0]][0], coord_dict[edge[1]][0])
             ys = (coord_dict[edge[0]][1], coord_dict[edge[1]][1])
-            plt.plot(xs, ys, 'k-', lw=2, color="black", alpha=weight)
+            plt.plot(xs, ys, 'k-', lw=2, color=edge_colour, alpha=weight)
 
 
 def plot_graph(graph, edges=None, weights=None, weight="weight", coord_dict=None, withlabels=True):
