@@ -1,7 +1,6 @@
 import xpress as xp
 import numpy as np
 
-from optlearn import io_utils
 from optlearn.mip import mip_utils
 
 
