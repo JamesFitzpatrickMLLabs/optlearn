@@ -1,6 +1,5 @@
 import mip as mp
 
-from optlearn import io_utils
 from optlearn.mip import mip_utils
 
 
