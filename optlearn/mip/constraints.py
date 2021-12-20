@@ -5,7 +5,6 @@ import binpacking as bp
 
 from pyscipopt import Conshdlr, Eventhdlr, SCIP_RESULT, quicksum, SCIP_EVENTTYPE
 
-from optlearn import io_utils
 from optlearn import plotting
 
 from optlearn.mip import mip_utils
