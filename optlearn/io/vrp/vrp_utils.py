@@ -199,7 +199,7 @@ def add_coordinates(graph, info_dict):
 def add_weighted_edges(graph, edges, weights):
     """ Add the given edges to the graph with the specified weights """
 
-    graph.add_weighted_edges_from(o[(*edge, {"weight": weight})
+    graph.add_weighted_edges_from([(*edge, {"weight": weight})
                                    for ((edge), weight) in zip(edges, weights)])
     return graph
 
