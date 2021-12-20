@@ -10,7 +10,6 @@ from itertools import product
 from collections import OrderedDict
 from pyscipopt import SCIP_EVENTTYPE
 
-from optlearn import io_utils
 from optlearn import graph_utils
 from optlearn.mip import mip_utils
 from optlearn.mip import constraints
@@ -211,10 +210,10 @@ class tspProblem():
         vars = mip_utils.get_inward_variables(self.variable_dict, vertex, prefix)
         return self._funcs["sum"](vars)
 
-    def set_constraint(self, lhs, rhs, operator):
+    def set_constraint(self, lhs, rhs, operator, name=""):
         """ Set a constraint for the problem """
 
-        self._funcs["set_constraint"](self.problem, lhs, rhs, operator)
+        self._funcs["set_constraint"](self.problem, lhs, rhs, operator, name=name)
 
     def set_degree_constraint(self, vertex):
         """ Define the degree constraint for a given vertex """
