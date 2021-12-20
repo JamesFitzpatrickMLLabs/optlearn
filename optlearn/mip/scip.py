@@ -1,6 +1,5 @@
 import pyscipopt as ps
 
-from optlearn import io_utils
 from optlearn.mip import mip_utils
 
 
@@ -62,10 +61,10 @@ def set_edge_objective(problem, variable_dict, graph, perturb=False):
     problem.setObjective(objective, "minimize")
 
 
-def set_constraint(problem, lhs, rhs, operator):
+def set_constraint(problem, lhs, rhs, operator, name=None):
     """ Set a constraint for the given problem """
 
-    problem.addCons(mip_utils._operators[operator](lhs, rhs))
+    problem.addCons(mip_utils._operators[operator](lhs, rhs), name=name)
 
 
 def solve_problem(problem, kwargs=None):
