@@ -261,11 +261,11 @@ def generate_reachable_coordinate(coordinate, reachability_radius):
 
 
 def generate_strictly_reachable_coordinate(coordinate, reachability_radius):
-    """ Generate a new coordinate that is reachable from the given coordinate """
+    """ Generate a new coordinate that is strictly reachable from the given coordinate """
 
-    x_limits = (coordinate[0] - (reachability_radius/2), coordinate[0] + (reachability_radius/2))
+    x_limits = (coordinate[0] - (reachability_radius/3), coordinate[0] + (reachability_radius/3))
     x_ordinate = np.random.uniform(*x_limits)
-    y_limit = np.sqrt((reachability_radius/2) ** 2 - (coordinate[0] - x_ordinate) ** 2)
+    y_limit = np.sqrt((reachability_radius/3) ** 2 - (coordinate[0] - x_ordinate) ** 2)
     y_limits = (coordinate[1] - y_limit, coordinate[1] + y_limit)
     y_ordinate = np.random.uniform(*y_limits)
     coordinate = [x_ordinate, y_ordinate]
@@ -410,7 +410,7 @@ def generate_customer_id_attribute(maximum_id):
 
 
 def generate_customer_attributes(parent_coordinate, reachability_radius,
-                                service_time_limits, quantity_limits, maximum_id):
+                                 service_time_limits, quantity_limits, maximum_id):
     """ Generate attributes for the given customer """
 
     type_attribute = generate_customer_type_attribute()
