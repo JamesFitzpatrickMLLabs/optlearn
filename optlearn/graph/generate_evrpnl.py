@@ -172,10 +172,10 @@ def generate_depot_type_attribute():
     return type_attribute
 
 
-def generate_depot_cs_type_attribute():
+def generate_depot_cs_type_attribute(cs_type):
     """ Generate a CS type attribute for the depot """
 
-    cs_type_attribute = {"cs_type": None}
+    cs_type_attribute = {"cs_type": cs_type}
 
     return cs_type_attribute
 
@@ -188,11 +188,11 @@ def generate_depot_id_attribute(maximum_id):
     return id_attribute
 
 
-def generate_depot_attributes(x_limits, y_limits, maximum_id):
+def generate_depot_attributes(x_limits, y_limits, cs_type, maximum_id):
     """ Generate attributes for the given depot """
 
     type_attribute = generate_depot_type_attribute()
-    cs_type_attribute = generate_depot_cs_type_attribute()
+    cs_type_attribute = generate_depot_cs_type_attribute(cs_type)
     id_attribute = generate_depot_id_attribute(maximum_id)
     coordinate_attributes = generate_depot_coordinate_attributes(x_limits, y_limits)
 
@@ -230,13 +230,14 @@ def update_coordinate_dict(graph, depot_node, coordinate):
     return graph
 
 
-def generate_depot(graph, x_limits, y_limits):
+def generate_depot(graph, x_limits, y_limits, cs_type):
     """ Generate a depot for the given graph """
 
     depot_node = generate_new_key(graph)
     depot_attributes = generate_depot_attributes(
         x_limits,
         y_limits,
+        cs_type,
         depot_node,
     )
     graph.add_nodes_from([(depot_node, depot_attributes)])
@@ -558,7 +559,8 @@ class generateProblem():
     def add_depot_to_graph(self, graph):
         """ Add a depot to the graph """
 
-        graph = generate_depot(graph, self.x_limits, self.y_limits)
+        cs_type = self.select_random_cs_type()
+        graph = generate_depot(graph, self.x_limits, self.y_limits, cs_type)
 
         return graph
 
