@@ -10,11 +10,13 @@ from optlearn.mip import mip_wrapper
 
 class basicProblemBuilder(mip_wrapper.mipWrapper):
 
-    def __init__(self, solver_package, problem_type, is_directed, verbose=False, very_verbose=False):
+    def __init__(self, solver_package, problem_type, is_directed=True,
+                 is_multi=False, verbose=False, very_verbose=False):
 
         self.solver_package = solver_package
         self.problem_type = problem_type
         self.is_directed = is_directed
+        self.is_multi = is_multi
         self.verbose = verbose
         self.very_verbose = very_verbose
 
@@ -37,12 +39,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
     def _initialise_arc_travel_variable_graph(self):
         """ Initialise the graph used to store the arc travel variables """
 
-        if not self.is_directed:
+        if not self.is_directed and not(self.is_multi):
             self.travel_graph = nx.Graph()
-        elif self.is_directed:
+        elif not self.is_directed and self.is_multi:
+            self.travel_graph = nx.MultiGraph()
+        elif self.is_directed and not(self.is_multi):
             self.travel_graph = nx.DiGraph()
+        elif self.is_directed and self.is_multi:
+            self.travel_graph = nx.MultiDiGraph()
         else:
-            raise ValueError("is_directed attribute must be True or False!")
+            print("Cannot understand the graph type!")
+            
 
     def _initialise_node_time_variable_graph(self):
         """ Initialise the graph used to store the node time variables """
@@ -61,12 +68,32 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return variable_name
 
+    def name_arc_travel_variable_multi(self, first_node, second_node, station_node=None):
+        """ Name the arc travel variable between the nodes, possibly through a station """
+
+        if station_node is not None:
+            variable_name = f"x_{first_node},{second_node},{station_node}"
+        else:
+            variable_name = f"x_{first_node},{second_node},0"
+            
+        return variable_name
+
     def build_arc_travel_variable(self, first_node, second_node):
         """ Build an arc travel variable between the given nodes """
 
         variable_name = self.name_arc_travel_variable(first_node, second_node)
         variable = self.set_binary_variable(name=variable_name)
         self.store_arc_travel_variable(first_node, second_node, variable)
+
+        return None
+
+    def build_arc_travel_variable_multi(self, first_node, second_node, station_node=None):
+        """ Build an arc travel variable between the given nodes """
+
+        station_node = station_node or 0
+        variable_name = self.name_arc_travel_variable_multi(first_node, second_node, station_node)
+        variable = self.set_binary_variable(name=variable_name)
+        self.store_arc_travel_variable_multi(first_node, second_node, station_node, variable)
 
         return None
         
@@ -78,6 +105,18 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_arc_travel_variables_multi(self, graph):
+        """ Build an arc travel variable between all nodes in the given graph """
+
+        stations = self.get_stations(graph)
+        for arc in graph.edges:
+            self.build_arc_travel_variable_multi(*arc, None)
+            for station in stations:
+                if arc[0] not in stations and arc[1] not in stations:
+                    self.build_arc_travel_variable_multi(*arc, station)
+
+        return None
+
     def store_arc_travel_variable(self, first_node, second_node, arc_travel_variable):
         """ Store the given arc in a graph for quick connectedness checking """
 
@@ -85,7 +124,16 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         self.travel_graph.add_edges_from([storage_tuple], variable=arc_travel_variable)
 
         return None
-        
+
+    def store_arc_travel_variable_multi(self, first_node, second_node, station_node, variable):
+        """ Store the given arc in a graph for quick connectedness checking """
+
+        station_node = station_node or 0
+        storage_tuple = tuple([first_node, second_node, station_node])
+        self.travel_graph.add_edges_from([storage_tuple], variable=variable)
+
+        return None
+    
     def name_node_time_variable(self, node):
         """ Name the given node variable for tracking the time """
 
@@ -209,7 +257,9 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
     def get_time_limit(self, graph):
         """ Get the time limit for travel in the given graph """
 
-                                                
+        time_limit = graph.graph["fleet"]["vehicle_0"]["max_travel_time"]
+
+        return time_limit
 
     def get_incident_edges(self, graph, node):
         """ Find all of the edges incident with a given node (undirected) """
@@ -217,7 +267,14 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         edges = list(graph.edges(node))
 
         return edges
-        
+
+    def get_incident_edges_multi(self, graph, node):
+        """ Find all of the edges incident with a given node (undirected) """
+
+        edges = list(graph.edges(node))
+
+        return edges
+    
     def get_inward_incident_arcs(self, graph, node):
         """ Find all of the inward arcs incident with the given node (directed) """
 
@@ -240,11 +297,20 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         arcs = set(inward_arcs + outward_arcs)
 
         return arcs
-
+    
     def get_travel_variable_from_storage(self, tuple):
         """ Get the variable from the storage dict using a tuple (edge or arc) as a key """
 
         variable = self.travel_graph[tuple[0]][tuple[1]]["variable"]
+
+        return variable
+
+    def get_travel_variable_from_storage_multi(self, triple):
+        """ Get the variable from the storage dict using a tuple (edge or arc) as a key """
+
+        if len(tuple) == 2:
+            tuple = (*tuple, 0)
+        edge_attributes = self.travel_graph[tuple[0]][tuple[1]][tuple[2]]["variable"]
 
         return variable
 
@@ -269,6 +335,13 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return variables
 
+    def get_travel_variables_from_storage_multi(self, triples):
+        """ Get the variables from the storage dict using triples (edges or arcs) as keys """
+
+        variables = [self.get_travel_variable_from_storage_multi(triple) for triple in triples]
+
+        return variables
+    
     def get_node_time_variables_from_storage(self, nodes):
         """ Get the variables from the storage dict using nodes as keys """
 
@@ -302,7 +375,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         variable_sum = self.sum_items(variables)
         name = f"Customer-visiting constraint for node {customer_node}"
         constraint = self.set_constraint(variable_sum, 1, "==", name=name)
-        # print(variable_sum, "==", 1)
+        
+        return None
+
+    def build_customer_visiting_constraint_directed_multi(self, graph, customer_node):
+        """ Make sure the given customer is visited exactly once """
+
+        incident_arcs = self.get_outward_incident_arcs(graph, customer_node)
+        variables = self.get_travel_variables_from_storage(incident_arcs)
+        variable_sum = self.sum_items(variables)
+        name = f"Customer-visiting constraint for node {customer_node}"
+        constraint = self.set_constraint(variable_sum, 1, "==", name=name)
         
         return None
     
@@ -347,7 +430,6 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         variable_sum = self.sum_items(variables)
         name = f"Station-visiting constraint for node {station_node}"
         constraint = self.set_constraint(variable_sum, 1, "<=", name=name)
-        # print(variable_sum, "<=", 1)
         
         return None
 
@@ -384,7 +466,6 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         outward_sum = self.sum_items(outward_variables)
         name = f"Flow constraint for node {node}"
         self.set_constraint(inward_sum, outward_sum, "==", name)
-        # print(inward_sum, "==", outward_sum)
         
         return None
 
@@ -434,6 +515,26 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         num_vehicles = self.get_num_vehicles(graph)
         for depot_node in depot_nodes:
             self.build_depot_flow_constraints_directed(graph, depot_node, num_vehicles)
+
+    def fix_travel_variable(self, tuple, fixing_value=None):
+        """ Fix the travel variabe to the given value """
+
+        fixing_value = fixing_value or 0
+        travel_variable = self.get_travel_variable_from_storage(tuple)
+        constraint_name = f"fixing constraint for direct arc ({tuple[0]},{tuple[1]})"
+        _ = self.set_constraint(travel_variable, fixing_value, "==", constraint_name)
+
+        return None
+
+    def fix_travel_variables(self, tuples, fixing_values=None):
+        """ Fix the travel variabe to the given value """
+
+        fixing_values = fixing_values or [0] * len(tuples)
+        print(tuples)
+        for tuple, fixing_value in zip(tuples, fixing_values):
+            _ = self.fix_travel_variable(tuple, fixing_value)
+
+        return None
         
     def set_distance_objective(self, graph):
         """ Set an objective which minimises the distance travelled """
@@ -562,10 +663,19 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def get_prime_stations(self, graph):
+        """ Get the prime stations only """
+
+        stations = self.get_stations(graph)
+        stations = [station
+                    for station in stations if graph.nodes[station].get("prime_node") is None]
+
+        return stations
+
     def plot_station_nodes(self, graph, offset=None):
         """ Plot the station nodes """
 
-        stations = self.get_stations(graph)
+        stations = self.get_prime_stations(graph)
         plot_utils.plot_nodes(graph, "^", "green", 1, 10, 12, stations)
 
         return None
