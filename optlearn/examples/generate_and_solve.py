@@ -1,6 +1,7 @@
 import copy
 import time
 import hashlib
+import signal
 
 import matplotlib.pyplot as plt
 
@@ -39,6 +40,7 @@ def solve_until_optimal(graph, num_iterations=5):
     was_feasible = []
     objectives = []
     is_complete = False
+    previously_feasible = False
     iterations = 0
     
     while is_complete is False and iterations < num_iterations:
@@ -52,6 +54,13 @@ def solve_until_optimal(graph, num_iterations=5):
         )
         print("NODES: ", working_graph.nodes)
         problem_builder.build_arc_problem(working_graph)
+        if previously_feasible:
+            def f_usersolnotify(my_prob, my_object, solname, status):
+                pass
+            problem_builder.problem.addcbusersolnotify(f_usersolnotify, None, 1)
+            new_indices = [problem_builder.problem.getIndexFromName(2, variable_name)
+                           for variable_name in variable_names]
+            problem_builder.problem.addmipsol(solution, new_indices, "warm-start")
         problem_builder.problem.solve()
         if check_if_solved(problem_builder):
             was_feasible.append(True)
@@ -63,6 +72,11 @@ def solve_until_optimal(graph, num_iterations=5):
             if check_if_solved(problem_builder):
                 if round(objectives[-1], 5) == round(objectives[-2], 5):
                     is_complete = True
+        if objectives[-1] < 999999999999999:
+            solution = problem_builder.problem.getSolution()
+            variables = [problem_builder.problem.getVariable(num) for num in range(len(solution))]
+            variable_names = [variable.name for variable in variables]
+            previously_feasible = True
         print("OBJECTIVES", objectives)
         iterations += 1
                 
@@ -74,8 +88,60 @@ problem_hash.update(str(time.time()).encode("utf-8"))
 problem_hash = problem_hash.hexdigest()[:10]
 
 generator = generate_evrpnl.generateProblem()
-graph = generator.generate_random_problem(number_of_stations=3)
+graph = generator.generate_random_problem(number_of_stations=3, number_of_customers=10)
 graph = graph.to_directed()
+
+# problem_filename = "/home/james/transfer/95d986f526.pkl"
+# solution_filename = "/home/james/transfer/95d986f526_solution.pkl"
+# solution_graph = read_solution_graph(solution_filename)
+# problem_graph = read_problem_graph(problem_filename)
+# problem_builder = evrpnl_problem_builder.evrpnlProblemBuilder(
+#     solver_package="xpress",
+#     problem_type="evrpnl",
+#     is_directed=True,
+#     pwl_model="delta",
+# )
+# problem_builder.build_arc_problem(problem_graph)
+# problem_builder, latest_graph, iterations = solve_until_optimal(problem_graph, num_iterations=7)
+
+
+# filename = "/home/james/Downloads/evrpnl/tc0c10s2ct1.xml"
+# graph = read.read_evrpnl_problem_from_xml(filename)
+# graph = graph.to_directed()
+
+# problem_builder = evrpnl_problem_builder.evrpnlProblemBuilder(
+#     solver_package="xpress",
+#     problem_type="evrpnl",
+#     is_directed=True,
+#     pwl_model="delta",
+# )
+# problem_builder.build_node_problem(graph)
+# problem_builder.problem.solve()
+
+# def f_usersolnotify(my_prob, my_object, solname, status):
+#     pass
+
+# solution = problem_builder.problem.getSolution()
+# variables = [problem_builder.problem.getVariable(num) for num in range(len(solution))]
+# variable_names = [variable.name for variable in variables]
+
+# problem_builder = evrpnl_problem_builder.evrpnlProblemBuilder(
+#     solver_package="xpress",
+#     problem_type="evrpnl",
+#     is_directed=True,
+#     pwl_model="delta",
+# )
+# filename = "/home/james/Downloads/evrpnl/tc0c10s2ct1.xml"
+# new_graph = copy.deepcopy(graph)
+# new_graph = process_utils.duplicate_stations(new_graph, 1)
+# new_graph = new_graph.to_directed() 
+# problem_builder.build_node_problem(new_graph)
+# new_indices = [problem_builder.problem.getIndexFromName(2, variable_name)
+#                for variable_name in variable_names]
+# problem_builder.problem.addmipsol(solution, new_indices, "warm-start")
+# problem_builder.problem.addcbusersolnotify(f_usersolnotify, None, 1)
+# problem_builder.problem.solve()
+
 
 try:
     start = time.time()
@@ -86,7 +152,7 @@ try:
     travel_solution = problem_builder.get_travel_solution()
     latest_graph.add_edges_from([(*edge, {"solval": val})
                                  for (edge, val) in zip(list(latest_graph.edges), travel_solution)])
-    write_directory = "//"
+    write_directory = "/home/james/instances/"
     graph_io.write_pickle(graph, write_directory + problem_hash + ".pkl")
     graph_io.write_pickle(latest_graph, write_directory + problem_hash + "_solution.pkl")
     problem_builder.plot_problem(latest_graph, show=False, strict=True)
@@ -95,5 +161,3 @@ try:
     plt.close("all")
 except:
     pass
-
-
