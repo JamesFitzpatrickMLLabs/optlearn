@@ -233,7 +233,8 @@ def parse_consumption_rate_element(consumption_rate_element):
     """ Parse the consumption rate element as a float """
 
     consumption_rate_content = xml_utils.parse_element_content_as_float(consumption_rate_element)
-
+    consumption_rate_content = consumption_rate_content / 1000
+    
     return consumption_rate_content
 
 
@@ -241,8 +242,9 @@ def parse_battery_capacity_element(battery_capacity_element):
     """ Parse the battery capacity element content as a float """
 
     battery_capacity_content = xml_utils.parse_element_content_as_float(battery_capacity_element)
-
-    return battery_capacity_element
+    battery_capacity_content = battery_capacity_content / 1000
+    
+    return battery_capacity_content
 
 
 def parse_battery_level_element(battery_level_element):
@@ -386,8 +388,8 @@ def get_custom_dict(vehicle_profile_element):
     else:
         charging_functions_content = None
     custom_dict = {
-        "consumption_rate": fetch_consumption_rate_element(profile_element_dict), 
-        "battery_capacity": fetch_battery_capacity_element(profile_element_dict),
+        "consumption_rate": fetch_consumption_rate_element(custom_element_dict), 
+        "battery_capacity": fetch_battery_capacity_element(custom_element_dict),
         "charging_functions": charging_functions_content,
     }
 
