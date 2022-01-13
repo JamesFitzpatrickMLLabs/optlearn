@@ -6,9 +6,11 @@ from optlearn.plotting import plot_utils
 from optlearn.mip.routing import problem_builder
 from optlearn.mip.routing import piecewise_builder
 
+
 class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builder.pwlBuilder):
 
-    def __init__(self, solver_package, problem_type, is_directed, pwl_model="sos", model="node"):
+    def __init__(self, solver_package, problem_type, is_directed=True,
+                 is_multi=False, pwl_model="sos", model="arc"):
 
         problem_builder.basicProblemBuilder.__init__(
             self, solver_package, problem_type, is_directed)
@@ -111,9 +113,12 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_station_time_arcs_return_constraints(graph)
 
         self.build_energy_arcs_return_constraints(graph)
-        # self.build_time_arcs_return_constraints(graph)
-        # self.build_time_arcs_leave_constraints(graph)
+        self.build_time_arcs_return_constraints(graph)
+        self.build_time_arcs_leave_constraints(graph)
         self.build_time_arcs_zero_constraints(graph)
+
+        self.build_stations_clone_prime_constraints(graph)
+        self.build_energy_valid_ineqaulities(graph)
         
         return None
     
@@ -1816,13 +1821,86 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
 
         return None
 
+    def get_station_clones(self, graph, station_node):
+        """ Get the clone nodes for the given station """
+
+        nodes = self.get_stations(graph)
+        primes = [graph.nodes[node].get("prime_node") for node in nodes]
+        clones = [node for (node, prime) in zip(nodes, primes) if prime == station_node]
+
+        return clones
+
+    def build_station_clone_prime_constraints(self, graph, station_node):
+        """ Build constraints preventing travel between station clones """
+
+        station_clones = self.get_station_clones(graph, station_node)
+        for station_clone in station_clones:
+            lhs, rhs = self.get_travel_variable_from_storage((station_node, station_clone)), 0
+            constraint_name = f"Clone-prime constraint for {station_node} and {station_clone}"
+            _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+            lhs = self.get_travel_variable_from_storage((station_clone, station_node))
+            constraint_name = f"Clone-prime constraint for {station_clone} and {station_node}"
+            _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+            for other_clone in station_clones:
+                if other_clone != station_clone:
+                    lhs = self.get_travel_variable_from_storage((station_clone, other_clone))
+                    constraint_name = f"Clone constraint for {station_clone} and {other_clone}"
+                    _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+                    lhs = self.get_travel_variable_from_storage((other_clone, station_clone))
+                    constraint_name = f"Clone constraint for {other_clone} and {station_clone}"
+                    _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+
+        return None
+
+    def build_energy_valid_inequality(self, graph, first_node, second_node):
+        """ Build a valid inequality between the given nodes to tighten formulation """
+
+        arc_energy_variable = self.get_arc_energy_variable_from_storage((first_node, second_node))
+        travel_variable = self.get_travel_variable_from_storage((first_node, second_node))
+        energy_consumption = self.get_energy_consumption(graph, first_node, second_node)
+
+        nodes = self.get_stations(graph) + self.get_depots(graph)
+        if second_node not in nodes:
+            tuples = [(second_node, other_node) for other_node in nodes]
+            consumptions = self.get_energy_consumptions(graph, tuples)
+            minimum_consumption = min(consumptions)
+        else:
+            minimum_consumption = 0
+        lhs = arc_energy_variable
+        rhs = (energy_consumption + minimum_consumption) * travel_variable
+        constraint_name = f"Valid energy inequality for nodes {first_node} and {second_node}"
+        _ = self.set_constraint(lhs, rhs, ">=", constraint_name)
+
+        return None
+
+    def build_energy_valid_ineqaulities(self, graph):
+        """ Build all energy valid inequalities for the given problem """
+
+        non_depot_nodes = self.get_nodes_without_depots(graph)
+        other_nodes = self.get_nodes(graph)
+
+        for first_node in non_depot_nodes:
+            for second_node in other_nodes:
+                if first_node != second_node:
+                    self.build_energy_valid_inequality(graph, first_node, second_node)
+
+        return None
+        
+    def build_stations_clone_prime_constraints(self, graph):
+        """ Build all constraints preventing travel between station clones """
+
+        station_nodes = self.get_stations(graph)
+        for station_node in station_nodes:
+            self.build_station_clone_prime_constraints(graph, station_node)
+
+        return None
+            
     def build_plot_axis(self):
         """ Initialise a new axis """
 
         figure, axis = plt.subplots()
 
         return figure, axis
-
 
     def compute_reachability_radius(self, graph):
         """ Compute the reachability radius """
@@ -1955,7 +2033,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         _ = self.plot_strict_stations_reachability_radius(graph, axis)
 
         return None
-
 
     def plot_problem(self, graph, show=True, strict=False):
         """ Plot the nodes and the reachability radii of the problem """
