@@ -185,6 +185,23 @@ def duplicate_stations_uniform(graph, num_duplicates):
     return graph
 
 
+def duplicate_depots_uniform(graph, num_duplicates):
+    """ Duplicate the depots a given number of times, as stations """
+
+    assert(type(num_duplicates) is int, "Parameter num_duplicates must be an int!")
+
+    new_stations = []
+    depot_nodes = get_depot_nodes_from_metadata(graph)
+    for depot_node in depot_nodes:
+        for num in range(num_duplicates):
+            graph = duplicate_node(graph, station_node)
+            graph[list(graph.nodes)[-1]]["type"] = 2 
+            new_stations.append(list(graph.nodes)[-1])
+    graph.graph["node_types"]["station"] = graph.graph["node_types"]["station"] + new_stations
+
+    return graph
+
+
 def duplicate_stations_nonuniform(graph, num_duplicates):
     """ Duplicate the stations a given number of times """
 
