@@ -1121,7 +1121,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
 
         return None
 
-    def build_station_node_arrival_lambda_pwl_constraints(self, graph, station_node):
+    def build_station_node_arrival_sos_pwl_constraints(self, graph, station_node):
         """ Build station node arrival constraints for the lambda PWL model """
 
         self.reset_breakpoints(graph, station_node)
