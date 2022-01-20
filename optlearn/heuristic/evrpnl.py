@@ -204,15 +204,26 @@ def get_shortest_heuristic_solution(heuristic_graph, customer_tsp_tour):
     shortest_path_plan = [heuristic_graph[edge[0]][edge[1]]["plan"]
                           for edge in shortest_path_edges]
 
-    return shortest_path-plan
+    return shortest_path_plan
 
 
 from optlearn.io.vrp import vrp_utils
 from optlearn.graph import process_utils
 from optlearn.examples import load_solutions
+from optlearn.mip.routing import evrpnl_problem_builder
 
 # problem_graph = vrp_utils.read_evrpnl_problem("/home/james/Downloads/evrpnl/tc0c10s2cf1.xml")
 problem_graph = load_solutions.read_problem_graph("/home/james/transfer/00a61420cc.pkl") 
-problem_graph = process_utils.duplicate_stations_nonuniform(problem_graph, {2: 1})
+# problem_graph = process_utils.duplicate_stations_nonuniform(problem_graph, {1:1, 2: 1})
+# problem_builder = evrpnl_problem_builder.evrpnlProblemBuilder(
+#         solver_package="xpress",
+#         problem_type="evrpnl",
+#         is_directed=True,
+#         is_multi=False,
+#         pwl_model="delta",
+#     )
+# problem_builder.build_arc_problem(problem_graph)
+
+# problem_builder.problem.solve()
 customer_tsp_tour = get_customer_tsp_tour(problem_graph)
 heuristic_graph = build_heuristic_solution_graph(problem_graph)
