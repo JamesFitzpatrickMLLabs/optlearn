@@ -1,6 +1,28 @@
+import time
+import hashlib
+
 import xpress as xp
 
 from optlearn.mip import mip_utils
+
+
+def generate_constraint_hash():
+    """ Generate a hash to append to a constraint name """
+
+    constraint_hash = hashlib.sha1()
+    constraint_hash.update(str(time.time()).encode("utf-8"))
+    constraint_hash = constraint_hash.hexdigest()[:10]
+
+    return constraint_hash
+
+
+def append_constraint_hash(constraint_name):
+    """ Append a constraint hash to the constraint name """
+
+    constraint_hash = generate_constraint_hash()
+    constraint_name = constraint_name + f" --- {constraint_hash}"
+
+    return constraint_name
 
 
 def build_problem(problem_name=None):
@@ -162,7 +184,9 @@ def sum_items(items):
 def build_linear_constraint(problem, lhs, rhs, operator, name=None):
     """ Build a constraint for the given problem """
 
-    constraint = problem.addConstraint(mip_utils._operators[operator](lhs, rhs))
+    name = name or ""
+    name = append_constraint_hash(name)
+    constraint = xp.constraint(mip_utils._operators[operator](lhs, rhs), name=name)
 
     return constraint
 
@@ -170,12 +194,17 @@ def build_linear_constraint(problem, lhs, rhs, operator, name=None):
 def add_constraint_to_problem(problem, constraint):
     """ Add the given constraint to the problem """
 
+    problem.addConstraint(constraint)
+    
     return constraint
 
 
 def add_constraints_to_problem(problem, constraints):
     """ Add the given constraints to the problem """
 
+    for constraint in constraints:
+        problem.addConstraint(constraint)
+        
     return constraints
 
 
@@ -191,6 +220,7 @@ def set_linear_constraint(problem, lhs, rhs, operator, name=""):
 def set_sos1_constraint(problem, variables, name=""):
     """ Build and add an SOS(1) constraint for the given variables """
 
+    name = append_constraint_hash(name)
     indices = list(range(len(variables)))
     constraint = xp.sos(variables, indices, type=1, name=name)
     problem.addSOS(constraint)
@@ -201,6 +231,7 @@ def set_sos1_constraint(problem, variables, name=""):
 def set_sos2_constraint(problem, variables, name=""):
     """ Build and add an SOS(2) constraint for the given variables """
 
+    name = append_constraint_hash(name)
     indices = list(range(len(variables)))
     constraint = xp.sos(variables, indices, type=2, name=name)
     problem.addSOS(constraint)    
@@ -379,6 +410,58 @@ def add_solution_to_problem(problem, solution):
 
     raise NotImplementedError
 
+
+def count_problem_constraints(problem):
+    """ Count the number of constraints """
+
+    constraint_count = 0
+    potential_constraints, encountered_index_error = range(100000), False
+    while not encountered_index_error:
+        for number in potential_constraints:
+            try:
+                _ = problem.getConstraint(number)
+                constraint_count += 1
+            except IndexError as exception:
+                return constraint_count
+
+    return constraint_count
+            
+
+def fix_binary_variable(problem, variable):
+    """ Fix the given binary variable to zero """
+
+    variable_index = problem.getIndex(variable)
+    problem.chgbounds([variable_index], ["U"], [0])
+
+    return None
+
+
+def fix_binary_variables(problem, variables):
+    """ Fix the given binary variables to zero """
+
+    for variable in variables:
+        _ = fix_binary_variable(problem, variable)
+    
+    return None
+
+
+def release_binary_variable(problem, variable):
+    """ Release the given binary variable, so that it can be nonzero """
+
+    variable_index = problem.getIndex(variable)
+    problem.chgbounds([variable_index], ["U"], [1])
+
+    return None
+
+
+def release_binary_variables(problem, variables):
+    """ Release the given binary variables, so that they can be nonzero """
+
+    for variable in variables:
+        _ = release_binary_variable(problem, variable)
+    
+    return None
+
     
 _functions = {
     "sum_items": sum_items,
@@ -420,4 +503,9 @@ _functions = {
     "get_reduced_costs": get_reduced_costs,
     "get_reduced_cost": get_reduced_cost,
     "add_solution_to_problem": add_solution_to_problem,
+    "count_problem_constraints": count_problem_constraints,
+    "fix_binary_variable": fix_binary_variable,
+    "fix_binary_variables": fix_binary_variables,
+    "release_binary_variable": release_binary_variable,
+    "release_binary_variables": release_binary_variables,
 }
