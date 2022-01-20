@@ -47,8 +47,6 @@ class pwlBuilder(mip_wrapper.mipWrapper):
     def _warn_breakpoints(self):
         """ Print a warning about the breakpoints """
 
-        # print("When dealing with k segments, make sure to have k + 1 breakpoints!")
-
         return None
         
     def set_vertical_breakpoints(self, vertical_breakpoints):
@@ -266,11 +264,10 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs = self.sum_items(lambda_variables)
         constraint_name = "PWL convexity constraint"
         if base_index is not None:
-            constraint_name = constraint_name + f"on {base_index}"
+            constraint_name = constraint_name + f" on {base_index}"
         if rhs is None:
             rhs = self.sum_items(self.get_binary_variables_from_storage(binary_storage, base_index))
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        # print(lhs, "==", rhs)
         
         return None
 
@@ -281,12 +278,10 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs = self.sum_items(binary_variables)
         constraint_name = "PWL equality constraint"
         if base_index is not None:
-            constraint_name = constraint_name + f"on {base_index}"
+            constraint_name = constraint_name + f" on {base_index}"
         if rhs is None:
             rhs = 1
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-
-        # print(lhs, "==", rhs)
         
         return None
 
@@ -298,9 +293,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs, rhs = lambda_variables[0], binary_variables[0]
         constraint_name = "Leftmost PWL constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-        # print(lhs, "<=", rhs)
         
         return None
 
@@ -312,9 +306,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs, rhs = lambda_variables[-1], binary_variables[-1]
         constraint_name = "Rightmost PWL constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-        # print(lhs, "<=", rhs)
         
         return None
 
@@ -330,9 +323,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
             lhs, rhs = lambda_variable, left_binary_variable + right_binary_variable 
             constraint_name = f"Centre ({num}) PWL constraint"
             if base_index is not None:
-                constraint_name += f"on {base_index}"
+                constraint_name += f" on {base_index}"
             _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-            # print(lhs, "<=", rhs)
 
         return None
 
@@ -342,9 +334,9 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         variables = self.get_lambda_variables_from_storage(lambda_storage, base_index)
         constraint_name = "SOS(2) constraint for PWL model lambdas"
         if base_index is not None:
-            constraint_name += f"for {base_index}"
+            constraint_name += f" for {base_index}"
         _ = self.set_sos2_constraint(variables, name=constraint_name)
-
+        
         return None
 
     def build_delta_equality_constraint(self, storage_graph=None, base_index=None, rhs=None):
@@ -356,11 +348,10 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs = self.sum_items(delta_variables) + breakpoint
         constraint_name = "PWL equality constraint"
         if base_index is not None:
-            constraint_name = constraint_name + f"on {base_index}"
+            constraint_name = constraint_name + f" on {base_index}"
         if rhs is None:
             rhs = 1
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        # print(lhs, "==", rhs)
         
         return None
     
@@ -372,9 +363,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs, rhs = delta_variables[0], breakpoints[1] - breakpoints[0] 
         constraint_name = "Leftmost PWL constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-        # print(lhs, "<=", rhs)
         
         return None
 
@@ -391,7 +381,7 @@ class pwlBuilder(mip_wrapper.mipWrapper):
             lhs, rhs = delta_variable, binary_variable * (difference)
             constraint_name = f"Centre greater than ({num}) PWL constraint"
             if base_index is not None:
-                constraint_name += f"on {base_index}"
+                constraint_name += f" on {base_index}"
             _ = self.set_constraint(lhs, rhs, ">=", constraint_name)
             
             difference = breakpoints[num + 2] - breakpoints[num + 1]
@@ -400,9 +390,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
             lhs, rhs = delta_variable, binary_variable * (difference)
             constraint_name = f"Centre less than ({num}) PWL constraint"
             if base_index is not None:
-                constraint_name += f"on {base_index}"
+                constraint_name += f" on {base_index}"
             _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-            # print(lhs, "<=", rhs)
         
         return None
     
@@ -440,9 +429,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
                               for (breakpoint, variable) in zip(breakpoints, variables)])
         constraint_name = "Vertical breakpoint equality constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs_variable, "==", constraint_name)
-        # print(lhs, "==", rhs_variable)
         
         return None
 
@@ -456,9 +444,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
                               for (breakpoint, variable) in zip(breakpoints, variables)])
         constraint_name = "Vertical breakpoint equality constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs_variable, "==", constraint_name)
-        # print(lhs, "==", rhs_variable)
         
         return None
 
@@ -470,7 +457,7 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         summed_terms = self.sum_items([breakpoint * variable
                                        for (breakpoint, variable) in zip(breakpoints, variables)])
         self.set_objective(summed_terms)
-
+        
         return None
 
     def build_vertical_lambda_objective(self, lambda_storage=None, base_index=None):
@@ -498,9 +485,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         lhs = summed_terms + offset
         constraint_name = "Vertical breakpoint equality constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs_variable, "==", constraint_name)
-        # print(lhs, "==", rhs_variable)
         
         return None
 
@@ -515,9 +501,8 @@ class pwlBuilder(mip_wrapper.mipWrapper):
         
         constraint_name = "Vertical breakpoint equality constraint"
         if base_index is not None:
-            constraint_name += f"on {base_index}"
+            constraint_name += f" on {base_index}"
         _ = self.set_constraint(lhs, rhs_variable, "==", constraint_name)
-        # print(lhs, "==", rhs_variable)
         
         return None
     
