@@ -1766,8 +1766,43 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
 
         return None
 
+    def get_minimum_detour_energy(self, graph, station_node):
+        """ Get the minimum needed charge to get the vechicle to the depot again """
+
+        energies = []
+        nodes = [node for node in self.get_nodes(graph) if node != station_node]
+        nodes = [node for node in nodes if graph.nodes[node].get("prime_node") != station_node]
+        for first_node in nodes:
+            for second_node in nodes:
+                if first_node != second_node:
+                    first_energy = self.get_energy_consumption(graph, first_node, station_node)
+                    second_energy = self.get_energy_consumption(graph, station_node, second_node)
+                    third_energy = self.get_energy_consumption(graph, first_node, second_node)
+                    energies.append(first_energy + second_energy + third_energy)
+        minimum_detour_energy = min(energies)
+
+        return minimum_detour_energy
+
     def get_minimum_needed_station_charge(self, graph, station_node):
-        """ Get the minimum needed charge to get the vechicle to """
+        """ Get the minimum needed charge to get the vechicle to the depot again """
+
+        minimum_detour_energy = self.get_minimum_detour_energy(graph, station_node)
+        time_breakpoints = self.get_time_breakpoints(graph, station_node)
+        energy_breakpoints = self.get_energy_breakpoints(graph, station_node)
+
+        beyond_breakpoint = [True for item in energy_breakpoints if minimum_detour_energy >= item]
+        first_index = beyond_breakpoint.index(True)
+        if first_index < len(time_breakpoints) - 1:
+            timing_offset = sum(time_breakpoints[:first_index])
+            timing_gap = time_breakpoints[first_index + 1] - time_breakpoints[first_index]
+            energy_gap = energy_breakpoints[first_index + 1] - energy_breakpoints[first_index]
+            energy_fraction = energy_breakpoints[first_index + 1] - minimum_detour_energy
+            energy_fraction = energy_fraction / energy_gap
+            charging_time = timing_offset + energy_fraction * timing_gap
+        else:
+            charging_time = 0
+
+        return charging_time
 
     def build_station_time_arc_return_constraint(self, graph, station_node, other_node):
         """ Build a constraint making sure that the vehicle has enough time to return """
@@ -1776,8 +1811,8 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         time_variable = self.get_arc_time_variable_from_storage((other_node, station_node))
 
         travel_time = self.get_travel_time(graph, other_node, station_node)
-        # duration = self.get_minimum_needed_station_charge(graph, station_node)
-        duration = 0
+        duration = self.get_minimum_needed_station_charge(graph, station_node)
+        # duration = 0
         # REPLACE ABOVE WITH FUNCTIONAL EXPRESSION
         time_limit = self.get_maximum_travel_time()
         
