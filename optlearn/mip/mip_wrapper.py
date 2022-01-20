@@ -272,7 +272,7 @@ class mipWrapper():
 
         return None
 
-    def fix_binary_variable(self, variables):
+    def fix_binary_variables(self, variables):
         """ Fix an iterable of binary variables to their lower bound """
 
         _ = self._functions["fix_binary_variables"](self.problem, variables)
