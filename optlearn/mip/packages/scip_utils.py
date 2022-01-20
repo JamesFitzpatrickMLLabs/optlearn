@@ -338,6 +338,12 @@ def add_solution_to_problem(problem, solution):
     """ Add the given solution to the problem """
 
     raise NotImplementedError
+
+
+def count_problem_constraints(problem):
+    """ Count the number of constraints """
+
+    raise NotImplementedError
     
 
 _functions = {
@@ -380,4 +386,5 @@ _functions = {
     "get_reduced_costs": get_reduced_costs,
     "get_reduced_cost": get_reduced_cost,
     "add_solution_to_problem": add_solution_to_problem,
+    "count_problem_constraints": count_problem_constraints,
 }
