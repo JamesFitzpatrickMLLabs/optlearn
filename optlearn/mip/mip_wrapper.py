@@ -257,3 +257,38 @@ class mipWrapper():
         objective_values = self._functions["get_objective_values"](self.problem)
 
         return objective_values
+
+    def count_problem_constraints(self):
+        """ Count the number of user-defined constraints in the problem """
+
+        number_of_constraints = self._functions["count_problem_constraints"](self.problem)
+
+        return number_of_constraints
+
+    def fix_binary_variable(self, variable):
+        """ Fix a binary variable to its lower bound """
+
+        _ = self._functions["fix_binary_variable"](self.problem, variable)
+
+        return None
+
+    def fix_binary_variable(self, variables):
+        """ Fix an iterable of binary variables to their lower bound """
+
+        _ = self._functions["fix_binary_variables"](self.problem, variables)
+
+        return None
+
+    def release_binary_variable(self, variable):
+        """ Release a binary variable from its lower bound """
+
+        _ = self._functions["release_binary_variable"](self.problem, variable)
+
+        return None
+
+    def release_binary_variable(self, variables):
+        """ Release an iterable of binary variables from their lower bound """
+
+        _ = self._functions["release_binary_variables"](self.problem, variables)
+
+        return None
