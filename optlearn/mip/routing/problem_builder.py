@@ -102,6 +102,7 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         for arc in graph.edges:
             self.build_arc_travel_variable(*arc)
+        self.travel_graph.graph["node_types"] = graph.graph["node_types"]
 
         return None
 
@@ -114,6 +115,7 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
             for station in stations:
                 if arc[0] not in stations and arc[1] not in stations:
                     self.build_arc_travel_variable_multi(*arc, station)
+        self.travel_graph.graph["node_types"] = graph.graph["node_types"]
 
         return None
 
@@ -264,30 +266,50 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
     def get_incident_edges(self, graph, node):
         """ Find all of the edges incident with a given node (undirected) """
 
-        edges = list(graph.edges(node))
+        # edges = list(graph.edges(node))
+        edges = self.get_incident_edges_multi(graph, node)
 
         return edges
 
     def get_incident_edges_multi(self, graph, node):
         """ Find all of the edges incident with a given node (undirected) """
 
-        edges = list(graph.edges(node))
+        edges = list(self.travel_graph.edges)
+        edges = [edge for edge in edges if node in edge]
 
         return edges
     
     def get_inward_incident_arcs(self, graph, node):
         """ Find all of the inward arcs incident with the given node (directed) """
 
-        arcs = list(graph.in_edges(node))
-
+        # arcs = list(self.travel_graph.in_edges(node))
+        arcs = self.get_inward_incident_arcs_multi(graph, node)
+        
         return arcs
 
+    def get_inward_incident_arcs_multi(self, graph, node):
+        """ Find all of the inward arcs incident with the given node (directed) """
+
+        edges = self.get_incident_edges_multi(self.travel_graph, node)
+        inward_incident_arcs = [edge for edge in edges if edge[1] == node]
+
+        return inward_incident_arcs
+    
     def get_outward_incident_arcs(self, graph, node):
         """ Find all of the outward arcs incident with the given node (directed) """
 
-        arcs = list(graph.out_edges(node))
+        # arcs = list(self.travel_graph.out_edges(node))
+        arcs = self.get_outward_incident_arcs_multi(graph, node)
 
         return arcs
+
+    def get_outward_incident_arcs_multi(self, graph, node):
+        """ Find all of the outward arcs incident with the given node (directed) """
+
+        edges = self.get_incident_edges_multi(self.travel_graph, node)
+        outward_incident_arcs = [edge for edge in edges if edge[0] == node]
+
+        return outward_incident_arcs
 
     def get_incident_arcs(self, graph, node):
         """ Find all incident with the given node, inward or outward (directed) """
@@ -308,9 +330,7 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
     def get_travel_variable_from_storage_multi(self, triple):
         """ Get the variable from the storage dict using a tuple (edge or arc) as a key """
 
-        if len(tuple) == 2:
-            tuple = (*tuple, 0)
-        edge_attributes = self.travel_graph[tuple[0]][tuple[1]][tuple[2]]["variable"]
+        variable = self.travel_graph[triple[0]][triple[1]][triple[2]]["variable"]
 
         return variable
 
@@ -382,7 +402,7 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         """ Make sure the given customer is visited exactly once """
 
         incident_arcs = self.get_outward_incident_arcs(graph, customer_node)
-        variables = self.get_travel_variables_from_storage(incident_arcs)
+        variables = self.get_travel_variables_from_storage_multi(incident_arcs)
         variable_sum = self.sum_items(variables)
         name = f"Customer-visiting constraint for node {customer_node}"
         constraint = self.set_constraint(variable_sum, 1, "==", name=name)
@@ -411,6 +431,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_customer_visiting_constraints_directed_multi(self, graph):
+        """ Make sure each customer is visited exactly once """
+
+        if self.very_verbose:
+            print("Setting constraints to ensure each customer is visited exactly once!")
+        customer_nodes = self.get_customers(graph)
+        for customer_node in customer_nodes:
+            self.build_customer_visiting_constraint_directed_multi(graph, customer_node)
+
+        return None
+    
     def build_station_visiting_constraint_undirected(self, graph, station_node):
         """ Make sure the given station is visited at most once """
 
@@ -433,6 +464,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         
         return None
 
+    def build_station_visiting_constraint_directed_multi(self, graph, station_node):
+        """ Make sure the given station is visited at most once """
+
+        incident_arcs = self.get_outward_incident_arcs(graph, station_node)
+        variables = self.get_travel_variables_from_storage_multi(incident_arcs)
+        variable_sum = self.sum_items(variables)
+        name = f"Station-visiting constraint for node {station_node}"
+        constraint = self.set_constraint(variable_sum, 1, "<=", name=name)
+        
+        return None
+    
     def build_station_visiting_constraints_undirected(self, graph):
         """ Make sure each station is visited at most once """
 
@@ -455,6 +497,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_station_visiting_constraints_directed_multi(self, graph):
+        """ Make sure each station is visited at most once """
+
+        if self.very_verbose:
+            print("Setting constraints to ensure each station is visited at most once!")
+        station_nodes = self.get_stations(graph)
+        for station_node in station_nodes:
+            self.build_station_visiting_constraint_directed_multi(graph, station_node)
+
+        return None
+    
     def build_flow_constraint_directed(self, graph, node):
         """ Build a flow constraint for the given node """
 
@@ -469,6 +522,20 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         
         return None
 
+    def build_flow_constraint_directed_multi(self, graph, node):
+        """ Build a flow constraint for the given node """
+
+        inward_incident_arcs = self.get_inward_incident_arcs(graph, node)
+        outward_incident_arcs = self.get_outward_incident_arcs(graph, node)
+        inward_variables = self.get_travel_variables_from_storage_multi(inward_incident_arcs)
+        outward_variables = self.get_travel_variables_from_storage_multi(outward_incident_arcs)
+        inward_sum = self.sum_items(inward_variables)
+        outward_sum = self.sum_items(outward_variables)
+        name = f"Flow constraint for node {node}"
+        self.set_constraint(inward_sum, outward_sum, "==", name)
+        
+        return None
+    
     def build_flow_constraints_directed(self, graph):
         """ Build flow constraints for the nodes in the given graph """
 
@@ -478,6 +545,15 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         
         return None
 
+    def build_flow_constraints_directed_multi(self, graph):
+        """ Build flow constraints for the nodes in the given graph """
+
+        nodes = self.get_nodes(graph)
+        for node in nodes:
+            self.build_flow_constraint_directed_multi(graph, node)
+        
+        return None
+    
     def build_depot_entry_constraint_directed(self, graph, depot_node, num_vehicles):
         """ Build a constraint restricting the number of vehicles entering the given depot """
 
@@ -489,6 +565,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_depot_entry_constraint_directed_multi(self, graph, depot_node, num_vehicles):
+        """ Build a constraint restricting the number of vehicles entering the given depot """
+
+        inward_arcs = self.get_inward_incident_arcs(graph, depot_node)
+        inward_variables = self.get_travel_variables_from_storage_multi(inward_arcs)
+        inward_sum = self.sum_items(inward_variables)
+        name = f"Depot entering constraint for depot {depot_node}"
+        self.set_constraint(inward_sum, num_vehicles, "<=", name=name)
+
+        return None
+    
     def build_depot_exit_constraint_directed(self, graph, depot_node, num_vehicles):
         """ Build a constraint restricting the number of vehicles exiting the given depot """
 
@@ -500,6 +587,17 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_depot_exit_constraint_directed_multi(self, graph, depot_node, num_vehicles):
+        """ Build a constraint restricting the number of vehicles exiting the given depot """
+
+        outward_arcs = self.get_outward_incident_arcs(graph, depot_node)
+        outward_variables = self.get_travel_variables_from_storage_multi(outward_arcs)
+        outward_sum = self.sum_items(outward_variables)
+        name = f"Depot exiting constraint for depot {depot_node}"
+        self.set_constraint(outward_sum, num_vehicles, "<=", name=name)
+
+        return None
+    
     def build_depot_flow_constraints_directed(self, graph, depot_node, num_vehicles):
         """ Build the entering and exiting flow constraints for the given depot """
 
@@ -508,6 +606,14 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
 
         return None
 
+    def build_depot_flow_constraints_directed_multi(self, graph, depot_node, num_vehicles):
+        """ Build the entering and exiting flow constraints for the given depot """
+
+        self.build_depot_entry_constraint_directed_multi(graph, depot_node, num_vehicles)
+        self.build_depot_exit_constraint_directed_multi(graph, depot_node, num_vehicles)
+
+        return None
+    
     def build_depot_uniform_flow_constraints_directed(self, graph):
         """ For all depot nodes, build the same flow constraints. Caution advised! """
 
@@ -516,6 +622,14 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         for depot_node in depot_nodes:
             self.build_depot_flow_constraints_directed(graph, depot_node, num_vehicles)
 
+    def build_depot_uniform_flow_constraints_directed_multi(self, graph):
+        """ For all depot nodes, build the same flow constraints. Caution advised! """
+
+        depot_nodes = self.get_depots(graph)
+        num_vehicles = self.get_num_vehicles(graph)
+        for depot_node in depot_nodes:
+            self.build_depot_flow_constraints_directed_multi(graph, depot_node, num_vehicles)
+            
     def fix_travel_variable(self, tuple, fixing_value=None):
         """ Fix the travel variabe to the given value """
 
@@ -530,7 +644,6 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         """ Fix the travel variabe to the given value """
 
         fixing_values = fixing_values or [0] * len(tuples)
-        print(tuples)
         for tuple, fixing_value in zip(tuples, fixing_values):
             _ = self.fix_travel_variable(tuple, fixing_value)
 
@@ -563,15 +676,30 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
                             for solution in solutions]
         
         return travel_solutions
+
+    def get_all_travel_edges(self):
+        """ Get the travel edges of the graph """
+
+        travel_edges = self.travel_graph.edges
+
+        return travel_edges
+
+    def get_all_travel_variables(self):
+        """ Get all the travel variables of the problem """
+
+        travel_edges = self.get_all_travel_edges()
+        travel_variables = self.get_travel_variables_from_storage(travel_edges)
+
+        return travel_variables
         
     def get_travel_solution(self):
         """ Get the solution only for the travel variables """
 
-        travel_variables = self.get_travel_variables_from_storage(self.travel_graph.edges)
+        travel_variables = self.get_all_travel_variables()
         travel_solution = self.get_variable_values(travel_variables)
         travel_solution = self.process_solution(travel_solution)
         
-        return travel_solution
+        return travel_solution        
 
     def get_time_solution(self):
         """ Get the solution only for the time variables """
@@ -648,8 +776,7 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
     def get_solution_tours(self):
         """ Get the solution tours """
 
-        if not hasattr(self, "support_graph"):
-            self.build_solution_support_graph()
+        self.build_solution_support_graph()
         cycles = self.get_solution_cycles()
         tours = [self.cycle_to_tour(cycle) for cycle in cycles]
 
