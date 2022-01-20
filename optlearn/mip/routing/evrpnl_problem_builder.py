@@ -9,17 +9,30 @@ from optlearn.mip.routing import piecewise_builder
 
 class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builder.pwlBuilder):
 
-    def __init__(self, solver_package, problem_type, is_directed=True,
-                 is_multi=False, pwl_model="sos", model="arc"):
+    def __init__(self, solver_package, is_directed=True, pwl_model="sos"):
 
         problem_builder.basicProblemBuilder.__init__(
-            self, solver_package, problem_type, is_directed)
-        piecewise_builder.pwlBuilder.__init__(self, solver_package)
+            self,
+            solver_package=solver_package,
+            problem_type="evrpnl",
+            is_directed=is_directed,
+            is_multi=False
+        )
+        piecewise_builder.pwlBuilder.__init__(
+            self,
+            solver_package=solver_package,
+        )
 
         self.pwl_model = pwl_model
-        self.model = model
         
         self.initialise_problem()
+        self.initialise_storage()
+        self.assume_hyperparameters()
+        self.warn_hyperparmaters()
+
+    def initialise_storage(self):
+        """ Initialise the graphs that store the variables """
+
         self._initialise_arc_travel_variable_graph()
         self._initialise_arc_time_variable_graph()
         self._initialise_arc_energy_variable_graph()        
@@ -35,8 +48,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self._initialise_station_node_arrival_coefficient_graph()
         self._initialise_station_node_departure_coefficient_graph()
 
-        self.assume_hyperparameters()
-        self.warn_hyperparmaters()
+        return None
 
     def _build_node_variables(self, graph):
         """ Build all of the node formulation variables """
@@ -76,8 +88,10 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_customer_visiting_constraints_directed(graph)
         self.build_station_visiting_constraints_directed(graph)
         self.build_flow_constraints_directed(graph)
+        
         self.build_station_nodes_arrival_pwl_constraints(graph)
         self.build_station_nodes_departure_pwl_constraints(graph)
+        
         self.build_station_nodes_duration_constraints(graph)
         self.build_energy_arrival_departure_constraints(graph)
         self.build_customer_energy_node_tracking_constraints(graph)
@@ -97,8 +111,10 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_customer_visiting_constraints_directed(graph)
         self.build_station_visiting_constraints_directed(graph)
         self.build_flow_constraints_directed(graph)
+        
         self.build_station_nodes_arrival_pwl_constraints(graph)
         self.build_station_nodes_departure_pwl_constraints(graph)
+        
         self.build_station_nodes_duration_constraints(graph)
         self.build_energy_arrival_departure_constraints(graph)
         self.build_customer_energy_arcs_tracking_constraints(graph)
@@ -106,22 +122,19 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_station_arrival_energy_arcs_tracking_constraints(graph)
         self.build_station_departure_energy_arcs_tracking_constraints(graph)
         self.build_depot_energy_arcs_tracking_constraints(graph)
-
         self.build_customer_time_arcs_return_constraints(graph)        
         self.build_customer_time_arcs_tracking_constraints(graph)
         self.build_station_time_arcs_tracking_constraints(graph)        
         self.build_station_time_arcs_return_constraints(graph)
-
         self.build_energy_arcs_return_constraints(graph)
         self.build_time_arcs_return_constraints(graph)
         self.build_time_arcs_leave_constraints(graph)
         self.build_time_arcs_zero_constraints(graph)
-
         self.build_stations_clone_prime_constraints(graph)
         self.build_energy_valid_ineqaulities(graph)
         
         return None
-    
+        
     def _build_objective(self, graph):
         """ Build the objective function """
 
@@ -165,12 +178,12 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         print(f"WARNING! Attribute maximum_travel_time set to {self.maximum_travel_time}")
         print(f"WARNING! Attribute energy_consumption_rate set to {self.energy_consumption_rate}")
         print(f"WARNING! Attribute battery_energy_capacity set to {self.battery_energy_capacity}")
-
+        
     def _initialise_arc_time_variable_graph(self):
         """ Initialise the graph used to store the arc time variables """
 
         self.arc_time_graph = nx.DiGraph()
-
+        
     def _initialise_arc_energy_variable_graph(self):
         """ Initialise the graph used to store the arc energy variables """
 
@@ -190,12 +203,12 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         """ Initialise the graph used to store the station node energy variables """
 
         self.station_departure_energy_graph = nx.Graph()
-
+        
     def _initialise_station_node_arrival_time_variable_graph(self):
         """ Initialise the graph used to store the station node time variables """
 
         self.station_arrival_time_graph = nx.Graph()
-
+        
     def _initialise_station_node_departure_time_variable_graph(self):
         """ Initialise the graph used to store the station node time variables """
 
@@ -210,21 +223,22 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         """ Initialise the graph used to store the station node arrival breakpoint variables """
 
         self.station_node_arrival_breakpoint_graph = nx.Graph()
-
+        
     def _initialise_station_node_departure_breakpoint_graph(self):
         """ Initialise the graph used to store the station node departure breakpoint variables """
 
         self.station_node_departure_breakpoint_graph = nx.Graph()
-
+        
     def _initialise_station_node_arrival_coefficient_graph(self):
         """ Initialise the graph used to store the station node arrival coefficient variables """
 
         self.station_node_arrival_coefficient_graph = nx.Graph()
-
+        
     def _initialise_station_node_departure_coefficient_graph(self):
         """ Initialise the graph used to store the station node departure coefficient variables """
 
         self.station_node_departure_coefficient_graph = nx.Graph()
+        
         
     def name_node_energy_variable(self, node):
         """ Name the given node variable for tracking the energy """
@@ -309,7 +323,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.arc_energy_graph.add_edges_from([(first_node, second_node)], variable=energy_variable)
 
         return None
-
+    
     def name_arc_time_variable(self, first_node, second_node):
         """ Name the given arc variable for tracking the time """
 
@@ -457,7 +471,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.station_arrival_time_graph.add_nodes_from([station_node], variable=time_variable)
 
         return None
-
+    
     def name_station_node_departure_time_variable(self, node):
         """ Name the given station node variable for tracking the time """
 
@@ -561,7 +575,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         )
         
         return None
-        
+    
     def build_station_nodes_arrival_pwl_variables(self, graph):
         """ Build all tracking variables for arrival at all station nodes """
 
@@ -589,7 +603,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         )
         
         return None
-
+    
     def build_station_node_departure_delta_pwl_variables(self, graph, station_node):
         """ Build energy and charge tracking variables for departure from at the given station """
 
@@ -604,7 +618,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         )
         
         return None
-
     
     def build_station_nodes_departure_pwl_variables(self, graph):
         """ Build all tracking variables for departure from all station nodes """
@@ -618,7 +631,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             variable_builder(graph, station_node)
 
         return None
-
+    
     def store_station_node_departure_coefficient_variable(self, station_node, coefficient, variable):
         """ Store the station node charging duration variable for the given node """
 
@@ -689,7 +702,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         time = self.distance_to_duration(weight, velocity)
 
         return time
-
+    
     def get_node_service_time(self, graph, node):
         """ Get the service time for a given node """
 
@@ -726,7 +739,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         energy_consumptions = [self.get_energy_consumption(graph, arc[0], arc[1]) for arc in tuples]
 
         return energy_consumptions
-
+    
     def get_travel_times(self, graph, tuples):
         """ Get the travel times between the given nodes """
 
@@ -781,7 +794,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         """ Reset the current stored breakpoints  """
 
         # On reflection, this is a terrible way of doing it
-
         time_coefficients = self.get_time_breakpoints(graph, station_node)
         energy_coefficients = self.get_energy_breakpoints(graph, station_node)
         self.set_horizontal_breakpoints(time_coefficients)
@@ -796,34 +808,35 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         
         return variable
 
+
     def get_node_energy_variables_from_storage(self, nodes):
         """ Get the variable from the storage dict using a node as a key """
 
         variables = [self.energy_graph.nodes[node]["variable"] for node in nodes]
         
         return variables
-
+    
     def get_arc_time_variable_from_storage(self, tuple):
         """ Get the variable from the storage dict using a tuple (edge or arc) as a key """
 
         variable = self.arc_time_graph[tuple[0]][tuple[1]]["variable"]
 
         return variable
-
+    
     def get_arc_energy_variable_from_storage(self, tuple):
         """ Get the variable from the storage dict using a tuple (edge or arc) as a key """
 
         variable = self.arc_energy_graph[tuple[0]][tuple[1]]["variable"]
 
         return variable
-
+    
     def get_arc_time_variables_from_storage(self, tuples):
         """ Get the variables from the storage dict using tuples (edges or arcs) as keys """
 
         variables = [self.arc_time_graph[tuple[0]][tuple[1]]["variable"] for tuple in tuples]
 
         return variables
-
+    
     def get_arc_energy_variables_from_storage(self, tuples):
         """ Get the variables from the storage dict using tuples (edges or arcs) as keys """
 
@@ -858,7 +871,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         variable = self.station_departure_time_graph.nodes[station_node]["variable"]
         
         return variable
-
+    
     def get_station_node_duration_variable_from_storage(self, station_node):
         """ Get the variable from the storage dict using a node as a key """
 
@@ -906,7 +919,8 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         
         travel_variables = self.get_travel_variables_from_storage(travel_arcs)
         travel_times = [self.get_travel_time(graph, arc[0], arc[1]) for arc in travel_arcs]
-        travel_time_sum = [time * variable for (time, variable) in zip(travel_times, travel_variables)]
+        travel_time_sum = [time * variable
+                           for (time, variable) in zip(travel_times, travel_variables)]
         travel_time_sum = self.sum_items(travel_time_sum)
         duration_sum = [self.get_station_node_duration_variable_from_storage(node)
                         for node in station_nodes]
@@ -1083,7 +1097,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_arrival_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_arrival_time_variable_from_storage(station_node)
@@ -1108,13 +1121,12 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
 
         return None
 
-    def build_station_node_arrival_sos_pwl_constraints(self, graph, station_node):
+    def build_station_node_arrival_lambda_pwl_constraints(self, graph, station_node):
         """ Build station node arrival constraints for the lambda PWL model """
 
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_arrival_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_arrival_time_variable_from_storage(station_node)
@@ -1124,11 +1136,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             binary_storage=self.station_node_arrival_breakpoint_graph,
             equality_rhs=self.sum_items(travel_variables),
             base_index=station_node,
-            is_convex=True,
-        )
-        self.build_sos_lambda_constraint(
-            lambda_storage=self.station_node_arrival_coefficient_graph,
-            base_index=station_node
+            is_convex=False,
         )
         self.build_vertical_lambda_combination_constraint(
             lambda_storage=self.station_node_arrival_coefficient_graph,
@@ -1141,7 +1149,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             base_index=station_node
         )
 
-        return None
+        return None    
     
     def build_station_node_arrival_delta_pwl_constraints(self, graph, station_node):
         """ Build station node arrival constraints for the delta PWL model """
@@ -1149,7 +1157,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_arrival_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_arrival_time_variable_from_storage(station_node)
@@ -1166,11 +1173,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             rhs_variable=energy_variable,
             base_index=station_node
         )
-        # self.build_horizontal_delta_combination_constraint(
-        #     delta_storage=self.station_node_arrival_coefficient_graph,
-        #     rhs_variable=time_variable,
-        #     base_index=station_node
-        # )
 
         return None
     
@@ -1189,14 +1191,13 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             constraint_builder(graph, station_node)
 
         return None
-
+    
     def build_station_node_departure_lambda_pwl_constraints(self, graph, station_node):
         """ Build station node departure constraints for the lambda PWL model """
 
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_departure_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_departure_time_variable_from_storage(station_node)
@@ -1227,7 +1228,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_departure_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_departure_time_variable_from_storage(station_node)
@@ -1262,7 +1262,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.reset_breakpoints(graph, station_node)
         
         incident_arcs = self.get_outward_incident_arcs(graph, station_node)
-        # Here I am not sure if we should have all arcs (in and out)
         travel_variables = self.get_travel_variables_from_storage(incident_arcs)
         energy_variable = self.get_station_node_departure_energy_variable_from_storage(station_node)
         time_variable = self.get_station_node_departure_time_variable_from_storage(station_node)
@@ -1279,11 +1278,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             rhs_variable=energy_variable,
             base_index=station_node
         )
-        # self.build_horizontal_delta_combination_constraint(
-        #     delta_storage=self.station_node_departure_coefficient_graph,
-        #     rhs_variable=time_variable,
-        #     base_index=station_node
-        # )
 
         return None
     
@@ -1304,7 +1298,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         return None
     
     def build_station_node_duration_constraint(self, graph, station_node):
-        """ Set the duration as the difference between arrival and depature times for the station """
+        """ Set the duration as difference between arrival and depature times for the station """
 
         arrival_time = self.get_station_node_arrival_time_variable_from_storage(station_node)
         departure_time = self.get_station_node_departure_time_variable_from_storage(station_node)
@@ -1314,7 +1308,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = departure_time - arrival_time
         name = f"Charging duration constraint for station {station_node}"
         _ = self.set_constraint(lhs, rhs, "==", name)
-        # print(lhs, "==", rhs)
 
         return None
 
@@ -1441,7 +1434,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = energy_capacity * travel_variable
         constraint_name = "Depot energy tracking variable for arc ({depot_node},{other_node})"
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        print(lhs, "==", rhs)
         
         return None
 
@@ -1503,7 +1495,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = energy_variable
         constraint_name = f"Arc arival energy tracking constraint for station {station_node}"
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        # print(lhs, "==", rhs)
         
         return None
 
@@ -1528,7 +1519,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = energy_variable
         constraint_name = f"Arc departure energy tracking constraint for station {station_node}"
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        print(lhs, "==", rhs)
         
         return None
 
@@ -1563,7 +1553,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = (energy_capacity - minimum_consumption) * travel_variable
         constraint_name = f"Energy upper-bounding constraint for arc ({first_node},{second_node})"
         _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-        print(lhs, "<=", rhs)
         
         return None
 
@@ -1573,7 +1562,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         depot_nodes = self.get_depots(graph)
         
         for edge in graph.edges:
-            print(edge)
             self.build_energy_arc_upper_bound_constraint(graph, edge[0], edge[1])
             
         return None
@@ -1699,7 +1687,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = self.sum_items(outward_time_variables)
         constraint_name = f"Customer arc time constraint for customer {customer_node}"
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        # print(lhs, "==", rhs)
         
         return None
 
@@ -1731,7 +1718,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         rhs = self.sum_items(outward_time_variables)
         constraint_name = f"Station arc time constraint for customer {station_node}"
         _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-        print(lhs, "==", rhs)
         
         return None
 
@@ -1763,7 +1749,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             constraint_name = f"Customer return constraint for customer {customer_node}"
             constraint_name = constraint_name + f" and depot {depot_node}"
             _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-            print(lhs, "<=", rhs)
 
             
         return None
@@ -1804,7 +1789,6 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             constraint_name = f"Station return constraint for station {station_node}"
             constraint_name = constraint_name + f" and depot {depot_node}"
             _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
-            print(lhs, "<=", rhs)
             
         return None
 
@@ -1894,6 +1878,223 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             self.build_station_clone_prime_constraints(graph, station_node)
 
         return None
+
+    def insert_station_clone_travel_variables(self, graph, station_node):
+        """ Insert the travel variables associated with the given station clone """
+
+        inward_incident_edges = self.get_inward_incident_arcs(graph, station_node)
+        outward_incident_edges = self.get_outward_incident_arcs(graph, station_node)
+        for inward_edge in inward_incident_edges:
+            print(station_node, inward_edge, "inward")
+            self.build_arc_travel_variable(inward_edge[0], inward_edge[1])
+        for outward_edge in outward_incident_edges:
+            print(station_node, outward_edge, "outward")
+            self.build_arc_travel_variable(outward_edge[0], outward_edge[1])
+
+        return None
+
+    def insert_station_clone_time_node_variable(self, graph, station_node):
+        """ Insert the node time variable for the station clone """
+
+        time_limit = self.get_maximum_travel_time()
+        self.build_node_time_variable(node, time_limit)
+            
+        return None
+
+    def insert_station_clone_arc_time_variables(self, graph, station_node):
+        """ Insert time tracking variables for all the arcs of the station clone """
+
+        time_limit = self.get_maximum_travel_time()
+        inward_incident_edges = self.get_inward_incident_arcs(graph, station_node)
+        outward_incident_edges = self.get_outward_incident_arcs(graph, station_node)
+        for inward_edge in inward_incident_edges:
+            self.build_arc_time_variable(inward_edge[0], inward_edge[1], time_limit)
+        for outward_edge in outward_incident_edges:
+            self.build_arc_time_variable(outward_edge[0], outward_edge[1], time_limit)
+
+        return None
+
+    def insert_station_clone_node_energy_variable(self, graph, station_node):
+        """ Insert the node energy variable for the station clone """
+
+        energy_capacity = self.get_battery_energy_capacity()
+        
+        self.build_node_energy_variable(station_node, energy_capacity)
+
+        return None
+
+    def insert_station_clone_arc_energy_variables(self, graph, station_node):
+        """ Insert energy tracking variables for all the arcs of the station clone """
+
+        energy_capacity = self.get_battery_energy_capacity()
+        inward_incident_edges = self.get_inward_incident_arcs(graph, station_node)
+        outward_incident_edges = self.get_outward_incident_arcs(graph, station_node)
+        for inward_edge in inward_incident_edges:
+            self.build_arc_energy_variable(inward_edge[0], inward_edge[1], energy_capacity)
+        for outward_edge in outward_incident_edges:
+            self.build_arc_energy_variable(outward_edge[0], outward_edge[1], energy_capacity)
+
+        return None
+
+    def insert_station_clone_node_arrival_energy_variable(self, graph, station_node):
+        """ Insert a fuel tracking variable for the given station clone """
+
+        energy_capacity = self.get_battery_energy_capacity()
+        self.build_station_node_arrival_energy_variable(station_node, energy_capacity)
+
+        return None
+
+    def insert_station_clone_node_departure_energy_variable(self, graph, station_node):
+        """ Insert a fuel tracking variable for the given station clone """
+
+        energy_capacity = self.get_battery_energy_capacity()
+        self.build_station_node_departure_energy_variable(station_node, energy_capacity)
+
+        return None
+
+    def insert_station_clone_node_arrival_time_variable(self, graph, station_node):
+        """ Insert a time tracking variable for the given station clone """
+
+        time_limit = self.get_maximum_travel_time()
+        self.build_station_node_arrival_time_variable(station_node, time_limit)
+
+        return None
+
+    def insert_station_clone_node_departure_time_variable(self, graph, station_node):
+        """ Insert a time tracking variable for the given station clone """
+
+        time_limit = self.get_maximum_travel_time()
+        self.build_station_node_departure_time_variable(station_node, time_limit)
+
+        return None
+
+    def insert_station_clone_node_duration_variable(self, graph, station_node):
+        """ Insert a charging duration tracking variable for the given station clone """
+
+        time_limit = self.get_maximum_travel_time()
+        self.build_station_node_duration_variable(station_node, time_limit)
+
+        return None
+
+    def insert_station_clone_node_arrival_pwl_variables(self, graph, station_node):
+        """ Insert all tracking variables for arrival at the given station clone """
+
+        if self.pwl_model == "lambda" or self.pwl_model == "sos":
+            variable_builder = self.build_station_node_arrival_lambda_pwl_variables
+        elif self.pwl_model == "delta":
+            variable_builder = self.build_station_node_arrival_delta_pwl_variables
+        
+        _ = variable_builder(graph, station_node)
+
+        return None
+
+    def insert_station_clone_node_departure_pwl_variables(self, graph, station_node):
+        """ Insert all tracking variables for departure from the given station clone """
+
+        if self.pwl_model == "lambda" or self.pwl_model == "sos":
+            variable_builder = self.build_station_node_departure_lambda_pwl_variables
+        elif self.pwl_model == "delta":
+            variable_builder = self.build_station_node_departure_delta_pwl_variables
+        
+        _ = variable_builder(graph, station_node)
+
+        return None
+    
+    def insert_station_clone_node_variables(self, graph, station_node):
+        """ Insert the variables associated with the station clone """
+
+        _ = self.insert_station_clone_travel_variables(graph, station_node)
+        _ = self.insert_station_clone_node_time_variable(graph, station_node)
+        _ = self.insert_station_clone_node_energy_variable(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_energy_variable(graph, station_node)
+        _ = self.insert_station_clone_node_departure_energy_variable(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_time_variable(graph, station_node)
+        _ = self.insert_station_clone_node_departure_time_variable(graph, station_node)
+        _ = self.insert_station_clone_node_duration_variable(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_pwl_variables(graph, station_node)
+        _ = self.insert_station_clone_node_departure_pwl_variables(graph, station_node)
+        
+        return None
+
+    def insert_station_clones_node_variables(self, graph, station_nodes):
+        """ Insert the variables associated with the station clones """
+
+        for station_node in station_nodes:
+            self.insert_station_clone_node_variables(graph, station_nodes)
+        
+        return None
+    
+    def insert_station_clone_arc_variables(self, graph, station_node):
+        """ Insert the variables associated with the station clone """
+
+        _ = self.insert_station_clone_travel_variables(graph, station_node)
+        _ = self.insert_station_clone_arc_time_variables(graph, station_node)
+        _ = self.insert_station_clone_arc_energy_variables(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_energy_variable(graph, station_node)
+        _ = self.insert_station_clone_node_departure_energy_variable(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_time_variable(graph, station_node)
+        _ = self.insert_station_clone_node_departure_time_variable(graph, station_node)
+        _ = self.insert_station_clone_node_duration_variable(graph, station_node)
+        _ = self.insert_station_clone_node_arrival_pwl_variables(graph, station_node)
+        _ = self.insert_station_clone_node_departure_pwl_variables(graph, station_node)
+        
+        return None
+
+    def insert_station_clones_arc_variables(self, graph, station_nodes):
+        """ Insert the variables associated with the station clones """
+
+        for station_node in station_nodes:
+            self.insert_station_clone_arc_variables(graph, station_nodes)
+        
+        return None
+
+    def insert_station_clones_node_constraints(self, graph):
+        """ Insert the node constraints associated with the given station clone """
+
+        self.build_customer_visiting_constraints_directed(graph)
+        self.build_station_visiting_constraints_directed(graph)
+        self.build_flow_constraints_directed(graph)
+        self.build_station_nodes_arrival_pwl_constraints(graph)
+        self.build_station_nodes_departure_pwl_constraints(graph)
+        self.build_station_nodes_duration_constraints(graph)
+        self.build_energy_arrival_departure_constraints(graph)
+        self.build_customer_energy_node_tracking_constraints(graph)
+        self.build_station_energy_node_tracking_constraints(graph)
+        self.build_depot_energy_node_tracking_constraints(graph)
+        self.build_station_departure_energy_node_reset_constraints(graph)
+        self.build_depot_energy_initialisation_constraints(graph)
+        self.build_customer_nodes_time_tracking_constraints(graph)
+        self.build_station_nodes_time_tracking_constraints(graph)
+        self.build_depot_nodes_return_constraints(graph)
+
+        return None
+
+        _ = self._build_node_constraints(graph)
+
+        return None        
+        
+    def insert_station_clone_arc_constraints(self, graph, station_node):
+        """ Insert the arc constraints associated with the given station clone """
+
+        _ = self._build_node_constraints(graph)
+
+        return None
+    
+    def insert_station_clones_node(self, graph, station_nodes):
+        """ Insert the variables and constraints associated with the station clone (node-based) """
+
+        _ = self.insert_station_clones_node_variables(graph, station_nodes)
+        _ = self.insert_station_clones_node_constraints(graph)
+
+        return None
+
+    def insert_station_clones_arc(self, graph, station_nodes):
+        """ Insert the variables and constraints associated with the station clone (arc-based) """
+
+        _ = self.insert_station_clones_arc_variables(graph, station_nodes)
+        _ = self.insert_station_clones_arc_constraints(graph)
+
+        return None        
             
     def build_plot_axis(self):
         """ Initialise a new axis """
