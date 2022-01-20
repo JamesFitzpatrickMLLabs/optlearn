@@ -44,11 +44,19 @@ class duplicationSolver():
     def set_customer_customer_pruner(self, pruner, strategy="auto"):
         """ Set pruner for the solver """
 
-        self.pruners["customer-customer"] = pruner
-        self.releasing_strategies["customer-customer"] = strategy
+        self.pruners["customer_customer"] = pruner
+        self.releasing_strategies["customer_customer"] = strategy
 
         return None
 
+    def set_unreachability_pruner(self, pruner, strategy="auto"):
+        """ Set pruner for the solver """
+
+        self.pruners["unreachability"] = pruner
+        self.releasing_strategies["unreachability"] = strategy
+
+        return None
+    
     def set_iteration_limit(self, iteration_limit):
         """ Set the iteration limit for the solver """
 
@@ -371,41 +379,102 @@ class duplicationSolver():
 
         return predictions
 
-    def _get_pruning_predictions(self, pruner):
+    def _unreachability_pruner(self, working_graph, edges, reachability_radius):
+        """ The pruner that fixes all unreachable edges in the graph """
+
+        weights = graph_utils.get_edges_weights(working_graph, edges)
+        prediction_dict = {edge: 1 if weight > reachability_radius else 0
+                           for (edge, weight) in zip(edges, weights)}
+        
+        return prediction_dict
+
+    def _set_unreachability_pruner(self):
+        """ Prune any edges that are too long to be travelled """
+
+        self._set_unreachability_pruner(self._unreachability_pruner)
+
+        return None
+
+    def _get_pruning_predictions(self, pruner, reachability_radius):
         """ Get the pruning predictions on the original graph """
 
-        prediction_dict = pruner.classify_edges(self.problem_graph)
+        prediction_dict = pruner.classify_edges(self.problem_graph, reachability_radius)
 
         return prediction_dict
 
+    def _get_travel_variable_from_arc(self, arc):
+        """ Get the current travel variable from the given arc """
+
+        variable_name = f"x_{arc[0]},{arc[1]}"
+        variable_index = self.problem_builder.problem.getIndexFromName(2, variable_name)
+        variable = self.problem_builder.problem.getVariable(variable_index)
+
+        return variable
+
+    def _get_energy_variable_from_arc(self, arc):
+        """ Get the current travel variable from the given arc """
+
+        variable_name = f"y_{arc[0]},{arc[1]}"
+        variable_index = self.problem_builder.problem.getIndexFromName(2, variable_name)
+        variable = self.problem_builder.problem.getVariable(variable_index)
+
+        return variable
+
+    def _get_time_variable_from_arc(self, arc):
+        """ Get the current travel variable from the given arc """
+
+        variable_name = f"t_{arc[0]},{arc[1]}"
+        variable_index = self.problem_builder.problem.getIndexFromName(2, variable_name)
+        variable = self.problem_builder.problem.getVariable(variable_index)
+
+        return variable
+        
     def _translate_to_arc_keys_to_variable_keys(self, prediction_dict):
         """ Translate the arc keys to the variable keys """
 
         translated_prediction_dict = {}
         for key in prediction_dict.keys():
-            variable_name = f"x_{key[0]},{key[1]}"
-            variable_index = self.problem_builder.problem.getIndexFromName(variable_name)
-            variable = self.problem_builder.problem.getVariable(variable_index)
-            translated_prediction_dict[variable] = prediction_dict
+            travel_variable = self._get_travel_variable_from_arc(key)
+            energy_variable = self._get_energy_variable_from_arc(key)
+            time_variable = self._get_time_variable_from_arc(key)
+            translated_prediction_dict[travel_variable] = prediction_dict[key]
+            translated_prediction_dict[energy_variable] = prediction_dict[key]
+            translated_prediction_dict[time_variable] = prediction_dict[key]
 
         return translated_prediction_dict
 
     def _fix_pruning_predictions(self, translated_prediction_dict, threshold=0.5):
         """ Fix the arcs of the problem according to given predictions and threshold """
 
+        pruning_count = 0
+        for (variable, prediction) in translated_prediction_dict.items():
+            print(prediction)
+            if prediction <= threshold:
+                self.problem_builder.fix_binary_variable(variable)
+                
+        return None
+
+    def _release_pruning_predictions(self, translated_prediction_dict, threshold=0.5):
+        """ Release the arcs of the problem according to given predictions and threshold """
+
         for (variable, prediction) in translated_prediction_dict.items():
             if prediction >= threshold:
-                self.problem_builder.fix_binary_variable(variable)
+                self.problem_builder.release_binary_variable(variable)
 
         return None
 
-    def _customer_customer_prune(self, threshold):
+    def _exponential_releasing_strategy(self):
+
+        pass
+    
+    def _customer_customer_prune(self, threshold, reachability_radius):
         """ Perform a customer-customer arc pruning, with the given threshold """
 
         customer_customer_pruner = self.pruners.get("customer_customer")
         if customer_customer_pruner is not None:
             self._customer_customer_predictions = self._get_pruning_predictions(
-                customer_customer_pruner
+                customer_customer_pruner,
+                reachability_radius
             )
             translated_prediction_dict = self._translate_to_arc_keys_to_variable_keys(
                 self._customer_customer_predictions
@@ -413,7 +482,22 @@ class duplicationSolver():
             self._fix_pruning_predictions(translated_prediction_dict, threshold)
 
         return None
-        
+
+    def _unreachability_prune(self):
+        """ Perform unreachability arc pruning """
+
+        unreachability_pruner = self.pruners.get("unreachability")
+        if unreachability_pruner is not None:
+            self._unreachability_predictions = self._get_pruning_predictions(
+                unreachability_pruner
+            )
+            translated_prediction_dict = self._translate_to_arc_keys_to_variable_keys(
+                self._unreachability_predictions
+            )
+            self._fix_pruning_predictions(translated_prediction_dict, threshold)
+
+        return None
+    
     def solve_problem(self, reachability_radius=128, with_prune=False, threshold=0.5):
         """ Solve the problem from the beginning """
 
@@ -425,7 +509,8 @@ class duplicationSolver():
             
             self.build_evrpnl_problem()
             if with_prune:
-                self._customer_customer_prune(threshold)
+                self._unreachability_prune()
+                self._customer_customer_prune(threshold, reachability_radius)
             self._warm_start_from_previous_solution()
             if self.silent_solve:
                 with HiddenPrints():
@@ -450,8 +535,8 @@ class duplicationSolver():
             
             self.build_evrpnl_problem()
             if with_prune:
-                self._customer_customer_prune(threshold)
-
+                self._unreachability_prune()
+                self._customer_customer_prune(threshold, reachability_radius)
             self._warm_start_from_previous_solution()
             if self.silent_solve:
                 with HiddenPrints():
