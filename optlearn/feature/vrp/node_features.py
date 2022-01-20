@@ -1826,25 +1826,25 @@ def compute_normalised_station_depot_distance(graph, station, reachability_radiu
     return normalised_distance
 
 
-def get_closest_station(graph, station):
-    """Get the closest station to the given station """
+def get_closest_station(graph, node):
+    """Get the closest station to the given node """
     
     stations = feature_utils.get_stations(graph)
-    if len(stations) == 1:
+    if len(stations) == 1 and node in stations:
         return -1
-    stations = [item for item in stations if item != station]
-    closest_station = feature_utils.get_closest_node(graph, station, stations)
+    stations = [item for item in stations if item != node]
+    closest_station = feature_utils.get_closest_node(graph, node, stations)
 
     return closest_station
 
 
-def get_normalised_closest_station_distance(graph, station, reachability_radius):
+def get_normalised_closest_station_distance(graph, node, reachability_radius):
     """ Get the normalised distance to the closest station """
 
-    closest_station = get_closest_station(graph, station)
+    closest_station = get_closest_station(graph, node)
     if closest_station == -1:
         return -1
-    distance = feature_utils.get_shortest_distance(graph, station, closest_station)
+    distance = feature_utils.get_shortest_distance(graph, node, closest_station)
     normalised_distance = distance / reachability_radius
     if normalised_distance >= 1:
         return -1
@@ -1868,6 +1868,71 @@ def get_closest_station_sine(graph, station):
     sine = graph_utils.get_node_attribute(graph, closest_station, "depot_station_sine")
     
     return sine
+
+
+def remove_unreachable_edges(graph, reachability_radius):
+    """ Remove edges that are not reachable (use only for clone graphs!) """
+
+    edges, weights = graph_utils.get_all_edges(graph), graph_utils.get_all_weights(graph)
+    removeable_edges = [edge for (edge, weight) in zip(edges, weights)
+                        if weight > reachability_radius]
+    graph.remove_edges_from(removeable_edges)
+
+    return graph
+
+
+def remove_station_strictly_unreachable_edges(graph, reachability_radius):
+    """ Remove station edges that are not strictly reachable (use only for clone graphs!) """
+
+    stations, customers = feature_utils.get_stations(graph), feature_utils.get_customers(graph)
+    station_customer_edges = [edge for edge in graph_utils.get_all_edges(graph)
+                              if edge[0] in stations and edge[1] in customers]
+    customer_station_edges = [edge for edge in graph_utils.get_all_edges(graph)
+                              if edge[1] in stations and edge[0] in customers]
+    edges = station_customer_edges + customer_station_edges
+    weights = graph_utils.get_edges_weights(graph, edges)
+    removeable_edges = [edge for (edge, weight) in zip(edges, weights)
+                        if weight > reachability_radius / 2]
+    graph.remove_edges_from(removeable_edges)
+
+    return graph
+
+
+def get_strict_eigenvector_centrality(graph, reachability_radius):
+    """ Get the eigenvector centrality with only strictly reachable edges """
+
+    clone_graph = graph_utils.clone_graph(graph)
+    clone_graph = remove_unreachable_edges(clone_graph, reachability_radius)
+    clone_graph = remove_station_strictly_unreachable_edges(clone_graph, reachability_radius)
+    eigenvector_centralities = nx.eigenvector_centrality(clone_graph, weight="weight")
+
+    return eigenvector_centralities
+
+
+def get_strict_closeness_centrality(graph, reachability_radius):
+    """ Get the eigenvector centrality with only strictly reachable edges """
+
+    clone_graph = graph_utils.clone_graph(graph)
+    clone_graph = remove_unreachable_edges(clone_graph, reachability_radius)
+    clone_graph = remove_station_strictly_unreachable_edges(clone_graph, reachability_radius)
+    closeness_centralities = {
+        node: nx.closeness_centrality(clone_graph, node, distance="weight")
+        for node in clone_graph.nodes
+    }
+
+    return closeness_centralities
+
+
+def get_strict_betweenness_centrality(graph, reachability_radius):
+    """ Get the eigenvector centrality with only strictly reachable edges """
+
+    clone_graph = graph_utils.clone_graph(graph)
+    clone_graph = remove_unreachable_edges(clone_graph, reachability_radius)
+    clone_graph = remove_station_strictly_unreachable_edges(clone_graph, reachability_radius)
+    betweenness_centralities = nx.betweenness_centrality(clone_graph, weight="weight")
+
+    return betweenness_centralities
+
 
 
 def compute_station_reachability_features(graph, station, reachability_radius):
@@ -1956,3 +2021,45 @@ def compute_station_strict_reachability_features(graph, station, reachability_ra
     return features
 
 
+node_functions = [
+        compute_normalised_strict_reachability_number,
+        compute_normalised_nondepot_strict_reachability_number,
+        compute_normalised_unique_strict_reachability_number,
+        compute_strict_reachability_mean_cosine,
+        compute_strict_reachability_std_cosine,
+        compute_strict_reachability_mean_sine,
+        compute_strict_reachability_std_sine,
+        compute_nondepot_strict_reachability_mean_cosine,
+        compute_nondepot_strict_reachability_std_cosine,
+        compute_nondepot_strict_reachability_mean_sine,
+        compute_nondepot_strict_reachability_std_sine,
+        compute_unique_strict_reachability_mean_cosine,
+        compute_unique_strict_reachability_std_cosine,
+        compute_unique_strict_reachability_mean_sine,
+        compute_unique_strict_reachability_std_sine,
+        compute_strict_reachability_mean_distance,
+        compute_strict_reachability_std_distance,
+        compute_strict_reachability_mean_separation,
+        compute_strict_reachability_std_separation,
+        compute_nondepot_strict_reachability_mean_distance,
+        compute_nondepot_strict_reachability_std_distance,
+        compute_nondepot_strict_reachability_mean_separation,
+        compute_nondepot_strict_reachability_std_separation,
+        compute_unique_strict_reachability_mean_distance,
+        compute_unique_strict_reachability_std_distance,
+        compute_unique_strict_reachability_mean_separation,
+        compute_unique_strict_reachability_std_separation,
+        compute_normalised_station_depot_distance,
+        compute_station_technology,
+        get_depot_cosine,
+        get_depot_sine,
+        get_normalised_closest_station_distance,
+        get_closest_station_cosine,
+        get_closest_station_sine,
+]
+
+graph_functions = [
+    get_strict_eigenvector_centrality,
+    get_strict_closeness_centrality,
+    get_strict_betweenness_centrality,
+]
