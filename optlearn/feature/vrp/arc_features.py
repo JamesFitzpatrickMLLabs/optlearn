@@ -2,6 +2,22 @@ import numpy as np
 import networkx as nx
 
 from optlearn.graph import graph_utils
+from optlearn.solve import evrpnl_duplication
+
+from optlearn.feature.vrp import feature_utils 
+from optlearn.feature.vrp import node_features 
+
+
+def get_customer_customer_arcs(graph):
+    """ Get the customer-customer arcs of a graph """
+    
+    customers = feature_utils.get_customers(graph)
+    customer_customer_arcs = [
+        edge for edge in feature_utils.get_all_edges(graph)
+        if edge[0] in customers and edge[1] in customers
+    ]
+
+    return customer_customer_arcs
 
 
 def store_edge_features(graph, features, name, edges=None):
@@ -181,6 +197,148 @@ def get_normalised_right_outward_incident_weight_std(graph, edge, reachability_r
     return normalised_std
 
 
+def get_normalised_left_vertex_distance_to_depot(graph, edge, reachability_radius):
+    """ Get the distance from the left vertex to the depot and normalise it """
+
+    distance = node_features.get_depot_distance(graph, edge[0])
+    normalised_distance = distance / reachability_radius
+    if normalised_distance > 1:
+        normalised_distance = -1
+        
+    return normalised_distance
+
+
+def get_normalised_right_vertex_distance_to_depot(graph, edge, reachability_radius):
+    """ Get the distance from the right vertex to the depot and normalise it """
+
+    distance = node_features.get_depot_distance(graph, edge[1])
+    normalised_distance = distance / reachability_radius
+    if normalised_distance > 1:
+        normalised_distance = -1
+        
+    return normalised_distance
+
+
+def get_normalised_left_closest_station_distance(graph, edge, reachability_radius):
+    """ Get the distance to the closest station to the left vertex and normalise it """
+
+    distance = node_features.get_normalised_closest_station_distance(
+        graph, edge[0], reachability_radius)
+
+    return distance
+
+
+def get_normalised_right_closest_station_distance(graph, edge, reachability_radius):
+    """ Get the distance to the closest station to the left vertex and normalise it """
+
+    distance = node_features.get_normalised_closest_station_distance(
+        graph, edge[1], reachability_radius)
+
+    return distance
+
+
+def get_left_closest_station_technology(graph, edge, reachability_radius):
+    """ Get the technology of the closest station to the left vertex """
+
+    closest_station = node_features.get_closest_station(graph, edge[0])
+    station_technology = node_features.compute_station_technology(graph, closest_station)
+
+    return station_technology
+
+
+def get_right_closest_station_technology(graph, edge, reachability_radius):
+    """ Get the technology of the closest station to the right vertex """
+
+    closest_station = node_features.get_closest_station(graph, edge[1])
+    station_technology = node_features.compute_station_technology(graph, closest_station)
+
+    return station_technology
+
+
+def are_left_and_right_closest_stations_the_same(graph, edge):
+    """ Check if the left and right closest stations are the same station """
+
+    left_closest_station = node_features.get_closest_station(graph, edge[0])
+    right_closest_station = node_features.get_closest_station(graph, edge[1])
+    are_closest_stations_the_same = int(left_closest_station == right_closest_station)
+
+    return are_closest_stations_the_same
+
+
+def get_left_depot_cosine(graph, edge):
+    """ Get the left depot cosine for the given edge """
+
+    left_depot_cosine = node_features.get_depot_cosine(graph, edge[0])
+
+    return left_depot_cosine
+
+
+def get_right_depot_cosine(graph, edge):
+    """ Get the right depot cosine for the given edge """
+
+    right_depot_cosine = node_features.get_depot_cosine(graph, edge[1])
+
+    return right_depot_cosine
+
+
+def get_left_closest_station_depot_cosine(graph, edge):
+    """ Get the depot cosine of the station closest to the left vertex """
+
+    left_closest_station = node_features.get_closest_station(graph, edge[0])
+    left_depot_cosine = node_features.get_depot_cosine(graph, edge[0])
+
+    return left_depot_cosine
+
+
+def get_right_closest_station_depot_cosine(graph, edge):
+    """ Get the depot cosine of the station closest to the right vertex """
+
+    right_closest_station = node_features.get_closest_station(graph, edge[1])
+    right_depot_cosine = node_features.get_depot_cosine(graph, edge[1])
+
+    return right_depot_cosine
+
+
+def get_strict_edge_betweenness_centrality(graph, reachability_radius):
+    """ Get the eigenvector centrality with only strictly reachable edges """
+
+    clone_graph = graph_utils.clone_graph(graph)
+    clone_graph = node_features.remove_unreachable_edges(
+        clone_graph, reachability_radius)
+    clone_graph = node_features.remove_station_strictly_unreachable_edges(
+        clone_graph, reachability_radius)
+    betweenness_centralities = nx.edge_betweenness_centrality(clone_graph, weight="weight")
+
+    return betweenness_centralities
+
+
+def get_minimum_arborescence_values(graph):
+    """ Get the minimum arboresecence values """
+
+    arboresecence_graph = nx.minimum_spanning_arborescence(graph)
+    arboresecence_values = nx.get_edge_attributes(arboresecence_graph, "weight")
+
+    return arboresecence_values
+
+
+def get_evrpnl_problem_relaxation_solution(graph, reachability_radius):
+    """ Get the evrpnl problem relexation solution """
+
+    customers = feature_utils.get_customers(graph)
+    solver = evrpnl_duplication.duplicationSolver(
+        graph, iteration_limit=len(customers), time_limit=300)
+    solver.lpsolve_problem(reachability_radius)
+    solution = solver.get_primed_travel_solution_dict()
+
+    return solution
+
+    
+def get_evrpnl_problem_relaxation_reduced_costs(graph):
+    """ Get the evrpnl problem relexation solution """
+
+    return None
+
+    
 def compute_arc_features(graph, edge, reachability_radius):
     """ Compute the arc features for the given arc """
 
@@ -199,7 +357,51 @@ def compute_arc_features(graph, edge, reachability_radius):
         get_minimum_right_outward_incident_weight_ratio(graph, edge),
         get_normalised_right_inward_incident_weight_std(graph, edge, reachability_radius),
         get_normalised_right_outward_incident_weight_std(graph, edge, reachability_radius),
-        
+        get_normalised_left_vertex_distance_to_depot(graph, edge, reachability_radius),
+        get_normalised_right_vertex_distance_to_depot(graph, edge, reachability_radius),
+        get_normalised_left_closest_station_distance(graph, edge, reachability_radius),
+        get_normalised_right_closest_station_distance(graph, edge, reachability_radius),
+        get_left_closest_station_technology(graph, edge, reachability_radius),
+        get_right_closest_station_technology(graph, edge, reachability_radius),
+        are_left_and_right_closest_stations_the_same(graph, edge),
+        get_left_depot_cosine(graph, edge),
+        get_right_depot_cosine(graph, edge),
+        get_left_closest_station_depot_cosine(graph, edge),
+        get_right_closest_station_depot_cosine(graph, edge),        
     ])
 
     return arc_features
+
+
+arc_functions = [
+    compute_normalised_edge_weight,
+    get_maximum_left_inward_incident_weight_ratio,
+    get_minimum_left_inward_incident_weight_ratio,
+    get_maximum_left_outward_incident_weight_ratio,
+    get_minimum_left_outward_incident_weight_ratio,
+    get_normalised_left_inward_incident_weight_std,
+    get_normalised_left_outward_incident_weight_std,
+    get_maximum_right_inward_incident_weight_ratio,
+    get_minimum_right_inward_incident_weight_ratio,
+    get_maximum_right_outward_incident_weight_ratio,
+    get_minimum_right_outward_incident_weight_ratio,
+    get_normalised_right_inward_incident_weight_std,
+    get_normalised_right_outward_incident_weight_std,
+    get_normalised_left_vertex_distance_to_depot,
+    get_normalised_right_vertex_distance_to_depot,
+    get_normalised_left_closest_station_distance,
+    get_normalised_right_closest_station_distance,
+    get_left_closest_station_technology,
+    get_right_closest_station_technology,
+    are_left_and_right_closest_stations_the_same,
+    get_left_depot_cosine,
+    get_right_depot_cosine,
+    get_left_closest_station_depot_cosine,
+    get_right_closest_station_depot_cosine,
+]
+
+graph_functions = [
+    get_strict_edge_betweenness_centrality,
+    get_minimum_arborescence_values,
+    get_evrpnl_problem_relaxation_solution,
+]
