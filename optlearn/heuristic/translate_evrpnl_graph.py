@@ -1,4 +1,7 @@
+import itertools
+
 import numpy as np
+import networkx as nx
 
 from optlearn.graph import graph_utils
 
@@ -50,19 +53,44 @@ def get_energy_consumption_rate(graph):
     return consumption_rate
 
 
-def get_service_times(graph):
+
+def get_node_service_time(graph, node):
+    """ Get the service time of the given node, otherwise return zero """
+
+    service_time = graph.nodes[node].get("service_time") or 0
+
+    return service_time
+
+
+def get_node_service_times(graph):
     """ Get the service times for each of the nodes """
 
-    service_times = [graph.nodes[node].get("service_time") or 0 for node in graph.nodes]
+    service_times = [get_node_service_time(graph, node) for node in graph.nodes]
 
     return service_times
+
+
+def get_nodes_service_times(graph, nodes):
+    """ Get the service times for each of the nodes """
+
+    service_times = [get_node_service_time(graph, node) for node in nodes]
+
+    return service_times
+
+
+def get_cs_type(graph, node):
+    """ Get the cs_types for the given node """
+
+    cs_type = graph.nodes[node].get("cs_type")
+
+    return cs_type
 
 
 def get_cs_types(graph):
     """ Get the cs_types for the station nodes """
 
     stations = feature_utils.get_stations(graph)
-    cs_types = [graph.nodes[station].get("cs_type") for station in stations]
+    cs_types = [get_cs_type(graph, station) for station in stations]
 
     return cs_types
 
@@ -91,8 +119,9 @@ def get_energy_consumption_matrix(graph):
     clone_graph = graph_utils.clone_graph(graph)
     clone_graph = clone_graph.to_directed()
     clone_graph.add_weighted_edges_from([(node, node, 0) for node in graph.nodes])
-    
-    weights = np.array(graph_utils.get_all_weights(clone_graph))
+
+    edges = list(itertools.product(list(clone_graph.nodes), list(clone_graph.nodes)))
+    weights = np.array(graph_utils.get_edges_weights(clone_graph, edges))
     weights = weights.reshape(len(clone_graph.nodes), len(clone_graph.nodes))
     consumption_rate = get_energy_consumption_rate(clone_graph) 
     consumption_matrix = (weights * consumption_rate * 1000).tolist()
@@ -106,8 +135,9 @@ def get_travel_time_matrix(graph):
     clone_graph = graph_utils.clone_graph(graph)
     clone_graph = clone_graph.to_directed()
     clone_graph.add_weighted_edges_from([(node, node, 0) for node in graph.nodes])
-    
-    weights = np.array(graph_utils.get_all_weights(clone_graph))
+
+    edges = list(itertools.product(list(clone_graph.nodes), list(clone_graph.nodes)))
+    weights = np.array(graph_utils.get_edges_weights(clone_graph, edges))
     weights = weights.reshape(len(clone_graph.nodes), len(clone_graph.nodes))
     average_velocity = get_average_vehicle_velocity(clone_graph) 
     travel_time_matrix = (weights / average_velocity).tolist()
@@ -115,22 +145,95 @@ def get_travel_time_matrix(graph):
     return travel_time_matrix
 
 
-def graph_to_translated_instance(graph):
+def build_relabel_dict(graph):
+    """ Build a relabelling dict for the stations """
+
+    stations = feature_utils.get_stations(graph)
+    last_nodes = list(graph.nodes)[::-1][:len(stations)]
+    keys = stations + last_nodes
+    values = last_nodes + stations
+    relabel_dict = {key: value for (key, value) in zip(keys, values)}
+
+    return relabel_dict
+
+
+def recoordinate_stations(graph, relabel_dict):
+    """ Update the coordinate dictioary to rflect the relabeling changes """
+
+    relabel_keys = relabel_dict.keys()
+    relabel_values = [relabel_dict[key] for key in relabel_keys]
+    relabel_coordinates = [graph.graph["coord_dict"][key] for key in relabel_keys]
+    for num, value in enumerate(relabel_values):
+        graph.graph["coord_dict"][value] = relabel_coordinates[num]
+
+    return graph
+
+
+def retype_stations(graph, relabel_dict):
+    """ Update the coordinate dictioary to rflect the relabeling changes """
+
+    for (key, value) in relabel_dict.items():
+        if key in graph.graph["node_types"]["station"]:
+            index = graph.graph["node_types"]["station"].index(key)
+            _ = graph.graph["node_types"]["station"].pop(index)
+            graph.graph["node_types"]["station"].append(value)
+        if key in graph.graph["node_types"]["customer"]:
+            index = graph.graph["node_types"]["customer"].index(key)
+            _ = graph.graph["node_types"]["customer"].pop(index)
+            graph.graph["node_types"]["station"].append(value)
+
+    return graph
+
+
+def relabel_stations(graph):
+    """ Relabel the stations so that they are the last nodes """
+
+    relabel_dict = build_relabel_dict(graph)
+    print(graph.graph["node_types"]["station"])
+    graph = retype_stations(graph, relabel_dict)
+    print(graph.graph["node_types"]["station"])
+    graph = recoordinate_stations(graph, relabel_dict)
+    graph = nx.relabel.relabel_nodes(graph, relabel_dict)
+
+    return graph
+
+
+def cstype_to_index(cs_type):
+    """ Convert the CS type to an index """
+
+    if cs_type == "fast":
+        return 0
+    elif cs_type == "normal":
+        return 1
+    elif cs_type == "slow":
+        return 2
+    else:
+        raise ValueError("CS Type not recongised by translator!")
+
+
+def graph_to_translated_instance(graph, relabel=False):
     """ Convert the graph to an FRVCPY instance """
 
+    graph = graph_utils.clone_graph(graph)
+    if relabel:
+        graph = relabel_stations(graph)
     translated_instance = {}
 
     stations = feature_utils.get_stations(graph)
     cs_types = get_cs_types(graph)
+    print(cs_types)
     
     translated_instance["max_q"] = get_battery_energy_capacity(graph) * 1000
     translated_instance["t_max"] = get_maximum_travel_time(graph)
-    translated_instance["process_times"] = get_service_times(graph)
+    translated_instance["process_times"] = get_node_service_times(graph)
     translated_instance["css"] = [
-        {"node_id": station, "cs_type": cs_type} for (station, cs_type) in zip(stations, cs_types)
+        # {"node_id": station, "cs_type": cstype_to_index(cs_type)}
+        {"node_id": station, "cs_type": cs_type}
+        for (station, cs_type) in zip(stations, cs_types)
     ]
     translated_instance["breakpoints_by_type"] = [
         {
+            # "cs_type": cstype_to_index(cs_type),
             "cs_type": cs_type,
             "time": get_time_breakpoints(graph, cs_type),
             "charge": get_energy_breakpoints(graph, cs_type),
