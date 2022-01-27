@@ -242,7 +242,7 @@ class mipWrapper():
             variables=variables,
         )
 
-        return costs
+        return values
     
     def get_objective_value(self):
         """ Get the objective value of the current solution """
@@ -265,6 +265,13 @@ class mipWrapper():
 
         return number_of_constraints
 
+    def count_problem_variables(self):
+        """ Count the number of user-defined variables in the problem """
+
+        number_of_variables = self._functions["count_problem_variables"](self.problem)
+
+        return number_of_variables
+
     def fix_binary_variable(self, variable):
         """ Fix a binary variable to its lower bound """
 
@@ -286,9 +293,23 @@ class mipWrapper():
 
         return None
 
-    def release_binary_variable(self, variables):
+    def release_binary_variables(self, variables):
         """ Release an iterable of binary variables from their lower bound """
 
         _ = self._functions["release_binary_variables"](self.problem, variables)
+
+        return None
+
+    def relax_binary_variable(self, variable):
+        """ Relax a binary variable """
+
+        _ = self._functions["relax_binary_variable"](self.problem, variable)
+
+        return None
+
+    def relax_binary_variables(self, variables):
+        """ Relax an iterable of binary variables """
+
+        _ = self._functions["relax_binary_variables"](self.problem, variables)
 
         return None
