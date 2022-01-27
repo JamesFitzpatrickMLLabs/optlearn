@@ -6,9 +6,9 @@ import numpy as np
 
 from optlearn.graph import graph_utils
 from optlearn.graph import process_utils
+from optlearn.heuristic import evrpnl_heuristic
 
 from optlearn.feature.vrp import feature_utils
-
 from optlearn.mip.routing import evrpnl_problem_builder
 
 
@@ -29,8 +29,10 @@ class duplicationSolver():
         self.iteration_limit = iteration_limit
         self.time_limit = time_limit
         self.silent_solve = silent_solve
+
         self.pruners = {}
         self.releasing_strategies = {}
+        self.cutting_strategies = {}
 
         self.working_graph = self.set_working_graph()
 
@@ -41,6 +43,101 @@ class duplicationSolver():
 
         return None
 
+    def kill_gomory(self):
+        """ Make sure gomory cuts are never used """
+
+        self.cutting_strategies["gomory"] = False
+
+        return None
+
+    def charge_gomory(self):
+        """ Make sure gomory cuts are used aggressively """
+
+        self.cutting_strategies["gomory"] = "aggressive"
+
+        return None
+    
+    def charge_cover(self):
+        """ Make sure cover cuts are used aggressively """
+
+        self.cutting_strategies["cover"] = "aggressive"
+
+        return None
+
+    def enable_heuristics(self):
+        """ Enable the MILP solver's use of heuristics """
+
+        self.problem_builder.problem.setControl("heurstrategy", 2)
+
+        return None
+    
+    def _initialise_heuristic_working_graph(self):
+        """ Intialise the working graph for the heuristic solver """
+
+        self._heuristic_working_graph = graph_utils.clone_graph(self.problem_graph)
+        self._heuristic_working_graph = process_utils.duplicate_depots_uniform(
+            self._heuristic_working_graph, 1)
+
+        return None
+
+    def _initialise_heuristic_solver(self):
+        """ Set up the heuristic solver """
+
+        self._initialise_heuristic_working_graph()
+        self._heuristic_solver = evrpnl_heuristic.heuristicSolver(self._heuristic_working_graph)
+
+        return None
+
+    def _solve_heuristic(self):
+        """ Solve the problem using the heuristic """
+        
+        self._heuristic_solver.set_temporary_tsp_filename("/home/james/temp.tsp")
+        self._heuristic_solver.solve_problem()
+
+        return None
+
+    def _set_initial_duplication_dict(self):
+        """ Set the initial duplication dict """
+
+        station_usage = self._heuristic_solver.get_shortest_solution_station_usage()
+        self._initial_duplication_dict = station_usage
+
+        return None
+
+    def _run_heuristic(self):
+        """ Build an solve with the heuristic """
+
+        self._initialise_heuristic_solver()
+        self._solve_heuristic()
+        self._set_initial_duplication_dict()
+
+        return None
+
+    def _convert_heuristic_routes_to_duplication_routes(self):
+        """ Convert the heuristic routes to duplication-compatible routes """
+
+        prime_stations = feature_utils.get_prime_stations(self.working_graph)
+        station_pool = {station: [station] + feature_utils.get_station_clones(
+            self.working_graph, station) for station in prime_stations}
+        routes = self._heuristic_solver.get_shortest_solution_routes()
+        for route in routes:
+            for num, node in enumerate(route):
+                if node in prime_stations:
+                    route[num] = station_pool[node][0]
+                    _ = station_pool[node].pop(0)
+                    
+        return routes
+
+    def _get_heuristic_duplication_route_edges(self):
+        """ get thee dge sof the heuristic route, but accounting for duplication """
+
+        converted_routes = self._convert_heuristic_routes_to_duplication_routes()
+        routes_edges = [self._heuristic_solver.construct_route_arcs(route)
+                        for route in converted_routes]
+        routes_edges = self._heuristic_solver.flatten_list_of_lists(routes_edges)
+
+        return routes_edges
+        
     def set_customer_customer_pruner(self, pruner, strategy="auto"):
         """ Set pruner for the solver """
 
@@ -54,6 +151,14 @@ class duplicationSolver():
 
         self.pruners["unreachability"] = pruner
         self.releasing_strategies["unreachability"] = strategy
+
+        return None
+
+    def set_heuristic_pruner(self, pruner, strategy="auto"):
+        """ Set pruner for the solver """
+
+        self.pruners["heuristic"] = pruner
+        self.releasing_strategies["heuristic"] = strategy
 
         return None
     
@@ -91,6 +196,40 @@ class duplicationSolver():
 
         return working_graph
 
+    def _set_gomory_cut_controls(self):
+        """ If we say so, switch off Gomory cuts """
+
+        if "gomory" in self.cutting_strategies.keys():
+            if self.cutting_strategies["gomory"] == False:
+                self.problem_builder.problem.setControl("treegomcuts", 0)
+                self.problem_builder.problem.setControl("gomcuts", 0)
+            if self.cutting_strategies["gomory"] == "aggressive":
+                self.problem_builder.problem.setControl("treegomcuts", 4)
+                self.problem_builder.problem.setControl("gomcuts", 4)
+
+        return None
+
+    def _set_cover_cut_controls(self):
+        """ If we say so, switch off cover cuts """
+
+        if "cover" in self.cutting_strategies.keys():
+            if self.cutting_strategies["cover"] == False:
+                self.problem_builder.problem.setControl("treecovercuts", 0)
+                self.problem_builder.problem.setControl("covercuts", 0)
+            if self.cutting_strategies["cover"] == "aggressive":
+                self.problem_builder.problem.setControl("treecovercuts", 4)
+                self.problem_builder.problem.setControl("covercuts", 4)
+
+        return None
+
+    def _set_cutting_controls(self):
+        """ Set all the cutting controls """
+
+        self._set_gomory_cut_controls()
+        self._set_cover_cut_controls()
+
+        return None
+
     def build_evrpnl_problem(self):
         """ Build an EVRPNL problem to solve using the stored graph """
 
@@ -101,6 +240,7 @@ class duplicationSolver():
         )
         self.problem_builder.build_arc_problem(self.get_working_graph())
         self._set_solve_time_limit()
+        self._set_cutting_controls()
 
         return None
 
@@ -126,15 +266,28 @@ class duplicationSolver():
         
         return duplication_dict
 
+    def _update_duplication_dict(self):
+        """ Update the duplication dict for the current interation """
+
+        duplication_dict = {}
+        for prime_station in self._prime_stations:
+            previous_duplicates = self._initial_duplication_dict.get(prime_station) or 0
+            duplication_dict[prime_station] = self._iteration +  previous_duplicates
+        
+        return duplication_dict
+    
     def _duplicate_stations(self):
         """ Duplicate all the prime stations uniformly in the working graph """
 
-        duplication_dict = self._build_duplication_dict()
+        if not hasattr(self, "_initial_duplication_dict"):
+            duplication_dict = self._build_duplication_dict()
+        else:
+            duplication_dict = self._update_duplication_dict()
         self.set_working_graph()
         self.working_graph = process_utils.duplicate_stations_nonuniform(
             self.working_graph,
             duplication_dict,
-        )
+        )            
 
         return None
 
@@ -218,6 +371,11 @@ class duplicationSolver():
         self.problem_builder.problem.controls.maxtime = int_remaining_time
 
         return None
+
+    def _store_branching_variable(self):
+        """ If we call this, we choose to store the branching decisions """
+
+        pass
 
     def _check_stop_conditions(self):
         """ Check if any of the stop conditions are met """
@@ -383,7 +541,7 @@ class duplicationSolver():
         """ The pruner that fixes all unreachable edges in the graph """
 
         weights = graph_utils.get_edges_weights(working_graph, edges)
-        prediction_dict = {edge: 1 if weight > reachability_radius else 0
+        prediction_dict = {edge: 0 if weight > reachability_radius else 1
                            for (edge, weight) in zip(edges, weights)}
         
         return prediction_dict
@@ -391,7 +549,23 @@ class duplicationSolver():
     def _set_unreachability_pruner(self):
         """ Prune any edges that are too long to be travelled """
 
-        self._set_unreachability_pruner(self._unreachability_pruner)
+        self.set_unreachability_pruner(self._unreachability_pruner)
+
+        return None
+
+    def _heuristic_pruner(self):
+        """ Fix all edges that are not part of the heuristic solution """
+
+        heuristic_routes_edges = self._get_heuristic_duplication_route_edges()
+        prediction_dict = {edge: 1 if edge in heuristic_routes_edges else 0
+                           for edge in graph_utils.get_all_edges(self.working_graph)}
+
+        return prediction_dict
+
+    def _set_heuristic_pruner(self):
+        """ Prune any edges that are not in the heuristic solution """
+
+        self.set_heuristic_pruner(self._heuristic_pruner)
 
         return None
 
@@ -448,7 +622,6 @@ class duplicationSolver():
 
         pruning_count = 0
         for (variable, prediction) in translated_prediction_dict.items():
-            print(prediction)
             if prediction <= threshold:
                 self.problem_builder.fix_binary_variable(variable)
                 
@@ -483,33 +656,65 @@ class duplicationSolver():
 
         return None
 
-    def _unreachability_prune(self):
+    def _unreachability_prune(self, reachability_radius):
         """ Perform unreachability arc pruning """
 
         unreachability_pruner = self.pruners.get("unreachability")
         if unreachability_pruner is not None:
-            self._unreachability_predictions = self._get_pruning_predictions(
-                unreachability_pruner
-            )
+            pruning_edges = graph_utils.get_all_edges(self.working_graph) 
+            self._unreachability_predictions = unreachability_pruner(
+                self.working_graph, pruning_edges, reachability_radius)
             translated_prediction_dict = self._translate_to_arc_keys_to_variable_keys(
                 self._unreachability_predictions
             )
-            self._fix_pruning_predictions(translated_prediction_dict, threshold)
+            self._fix_pruning_predictions(translated_prediction_dict, 0.5)
 
         return None
-    
-    def solve_problem(self, reachability_radius=128, with_prune=False, threshold=0.5):
+
+    def _heuristic_prune(self):
+        """ Perform heuristic arc pruning """
+
+        heuristic_pruner = self.pruners.get("heuristic")
+        if heuristic_pruner is not None:
+            self._heuristic_predictions = heuristic_pruner()
+            translated_prediction_dict = self._translate_to_arc_keys_to_variable_keys(
+                self._heuristic_predictions
+            )
+            self._fix_pruning_predictions(translated_prediction_dict, 0.5)
+
+        return None
+
+    def _establish_heuristic_warm_start(self, with_heuristic=False):
+        """ Using the heuristic, get a warm start solution for the MILP """
+
+        self._duplicate_stations()
+            
+        self.build_evrpnl_problem()
+        self._heuristic_prune()
+        print("Setting up heuristic solution...")
+        with HiddenPrints():
+            self.solve_current_problem()
+        self._store_current_solution()
+
+        return None
+
+    def solve_problem(self, reachability_radius=128, with_prune=False,
+                      with_heuristic=False, threshold=0.5):
         """ Solve the problem from the beginning """
 
         self._reset_stop_conditions()
         self._reset_solution_parameters()
-        
+        if with_heuristic:
+            self._run_heuristic()
+            self._establish_heuristic_warm_start()
+            
         while self._stop is False:
             self._duplicate_stations()
             
             self.build_evrpnl_problem()
+            self.enable_heuristics()
             if with_prune:
-                self._unreachability_prune()
+                self._unreachability_prune(reachability_radius)
                 self._customer_customer_prune(threshold, reachability_radius)
             self._warm_start_from_previous_solution()
             if self.silent_solve:
@@ -524,12 +729,15 @@ class duplicationSolver():
             self._print_summary()
         self._calculate_solve_time()
 
-    def lpsolve_problem(self, reachability_radius=128, with_prune=False, threshold=0.5):
+    def lpsolve_problem(self, reachability_radius=128, with_prune=False,
+                        with_heuristic=False, threshold=0.5):
         """ Solve the problem from the beginning """
 
         self._reset_stop_conditions()
         self._reset_solution_parameters()
-        
+        if with_heuristic:
+            self._run_heuristic()
+    
         while self._stop is False:
             self._duplicate_stations()
             
