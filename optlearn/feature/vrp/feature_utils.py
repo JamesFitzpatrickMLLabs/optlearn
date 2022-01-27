@@ -54,7 +54,7 @@ def get_prime_stations(graph):
     stations = get_stations(graph)
     is_primes = [graph.nodes[station].get("prime_node") for station in stations]
     primes = [station
-              for (station, is_prime) in zip(sttaions, is_primes) if is_prime is None]
+              for (station, is_prime) in zip(stations, is_primes) if is_prime is None]
 
     return primes
 
@@ -72,7 +72,7 @@ def get_clone_stations(graph):
 def get_station_prime(graph, station_node):
     """ Get the prime station for the given station """
 
-    prime = graph.nodes[station].get("prime_node")
+    prime = graph.nodes[station_node].get("prime_node")
 
     return prime
 
@@ -82,16 +82,16 @@ def get_stations_primes(graph, station_nodes):
 
     primes = [get_station_prime(graph, station_node) for station_node in station_nodes]
 
-    return prime
+    return primes
 
 
-def get_station_clones(graph, station):
+def get_station_clones(graph, station_node):
     """ Get the clones of the given station, if there are any """
 
     stations = get_stations(graph)
     station_primes = get_stations_primes(graph, stations)
-    clones = [station
-              for (station, prime) in zip(stations, station_primes) if prime == station]
+    clones = [station for (station, prime) in zip(stations, station_primes)
+              if prime == station_node]
 
     return clones
 
