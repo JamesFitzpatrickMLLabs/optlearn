@@ -194,11 +194,12 @@ def duplicate_depots_uniform(graph, num_duplicates):
     depot_nodes = get_depot_nodes_from_metadata(graph)
     for depot_node in depot_nodes:
         for num in range(num_duplicates):
-            graph = duplicate_node(graph, station_node)
-            graph[list(graph.nodes)[-1]]["type"] = 2 
+            graph = duplicate_node(graph, depot_node)
+            graph.nodes[list(graph.nodes)[-1]]["type"] = 2
+            graph.nodes[list(graph.nodes)[-1]]["cs_type"] = "fast"
             new_stations.append(list(graph.nodes)[-1])
     graph.graph["node_types"]["station"] = graph.graph["node_types"]["station"] + new_stations
-
+    graph = add_fast_charging_function(graph)
     return graph
 
 
@@ -228,6 +229,21 @@ def duplicate_stations(graph, num_duplicates):
     else:
         raise ValueError("Parameter num_duplicates must be int or dict!")
 
+    return graph
+
+
+def add_fast_charging_function(graph):
+    """ Add the charging function to the metadata """
+    
+    if graph.graph["fleet"]["functions_0"]["charging_functions"].get("fast") is None:
+        graph.graph["fleet"]["functions_0"]["charging_functions"]["fast"] = {
+            'cs_type': 'fast', 'breakpoints':[
+            {'battery_level': 0.0, 'charging_time': 0.0},
+            {'battery_level': 13600.0, 'charging_time': 0.31},
+            {'battery_level': 15200.0, 'charging_time': 0.39},
+            {'battery_level': 16000.0, 'charging_time': 0.51}
+        ]}
+            
     return graph
 
 
