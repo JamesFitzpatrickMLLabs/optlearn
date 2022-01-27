@@ -341,8 +341,7 @@ def get_reduced_cost(problem, variable):
     """ Get a the reduced cost of the given variable """
 
     index = get_variable_index(problem, variable)
-    values = problem.getlpsolval(index, 0)[-1]
-    value = values[index]
+    value = problem.getlpsolval(index, 0)[-1]
 
     return value
 
@@ -425,11 +424,28 @@ def count_problem_constraints(problem):
                 return constraint_count
 
     return constraint_count
-            
+
+
+def count_problem_variables(problem):
+    """ Count the number of constraints """
+
+    variable_count = 0
+    potential_variables, encountered_index_error = range(100000), False
+    while not encountered_index_error:
+        for number in potential_variables:
+            try:
+                _ = problem.getVariable(number)
+                variable_count += 1
+            except IndexError as exception:
+                return variable_count
+
+    return variable_count
+
 
 def fix_binary_variable(problem, variable):
     """ Fix the given binary variable to zero """
 
+    print(variable, type(variable))
     variable_index = problem.getIndex(variable)
     problem.chgbounds([variable_index], ["U"], [0])
 
@@ -459,6 +475,23 @@ def release_binary_variables(problem, variables):
 
     for variable in variables:
         _ = release_binary_variable(problem, variable)
+    
+    return None
+
+def relax_binary_variable(problem, variable):
+    """ Release the given binary variable, so that it can be non-integral """
+
+    variable_index = problem.getIndex(variable)
+    problem.chgcoltype([variable_index], ["C"])
+
+    return None
+
+
+def relax_binary_variables(problem, variables):
+    """ Relax the given binary variables, so that they can be non-integral """
+
+    for variable in variables:
+        _ = relax_binary_variable(problem, variable)
     
     return None
 
@@ -504,8 +537,12 @@ _functions = {
     "get_reduced_cost": get_reduced_cost,
     "add_solution_to_problem": add_solution_to_problem,
     "count_problem_constraints": count_problem_constraints,
+    "count_problem_variables": count_problem_variables,
     "fix_binary_variable": fix_binary_variable,
     "fix_binary_variables": fix_binary_variables,
     "release_binary_variable": release_binary_variable,
     "release_binary_variables": release_binary_variables,
+    "relax_binary_variable": relax_binary_variable,
+    "relax_binary_variables": relax_binary_variables,
+
 }
