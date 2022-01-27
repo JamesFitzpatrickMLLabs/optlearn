@@ -313,6 +313,7 @@ class duplicationSolver():
         elif self.problem_builder.problem.getProbStatus() == 2:
             is_feasible = True
         else:
+            print(self.problem_builder.problem.getProbStatus())
             is_feasible = False
         
         return is_feasible
@@ -757,6 +758,54 @@ class duplicationSolver():
             self._check_stop_conditions()
             self._print_summary()
         self._calculate_solve_time()
+
+    def _reset_fix_and_relax_parameters(self):
+        """ Reset the storage for fix and relax parameters """
+
+        self._fixing_set = []
+        self._relaxing_set = []
+        self._fix_and_relax_iterations = 1
+
+        return None
+
+    def _get_current_reduced_costs(self):
+        """ Get the fix and relax reduced costs """
+
+        reduced_costs = self.problem_builder.get_travel_reduced_costs()
+
+        return reduced_costs
+
+    def _store_current_reduced_costs(self):
+        """ Get the fix and relax reduced costs """
+
+        self._reduced_costs = self._get_current_reduced_costs()
+
+        return None
+
+    
+    # def _fix_and_relax(self, iterations=None, with_heuristic=False):
+    #     """ Perform fix and relax to try and get a nice heuristic solution """
+
+    #     self._reset_fix_and_relax_parameters()
+        
+    #     if with_heuristic:
+    #         self._run_heuristic()
+    #         self._establish_heuristic_warm_start()
+
+    #     self._duplicate_stations()
+    #     self.build_evrpnl_problem()
+    #     if self.silent_solve:
+    #         with HiddenPrints():
+    #             self.solve_current_relaxed_problem()
+    #         else:
+    #             self.solve_current_relaxed_problem()
+
+    #     while self._stop_fix_and_relax is False:
+
+
+    #         self._fix_and_relax_iterations += 1
+    #     self._set_initial_duplication_dict()
+
 
     def get_travel_solution_dict(self):
         """ Get a solution dictionary for the travel edges """
