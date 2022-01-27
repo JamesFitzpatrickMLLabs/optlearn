@@ -7,6 +7,8 @@ from optlearn.solve import evrpnl_duplication
 from optlearn.feature.vrp import feature_utils 
 from optlearn.feature.vrp import node_features 
 
+from optlearn.heuristic import evrpnl_heuristic
+
 
 def get_customer_customer_arcs(graph):
     """ Get the customer-customer arcs of a graph """
@@ -321,6 +323,17 @@ def get_minimum_arborescence_values(graph):
     return arboresecence_values
 
 
+def get_heuristic_edge_frequency(graph):
+    """ Use the heuristic to generate routes, see how often each edge appears """
+
+    heuristic_solver = evrpnl_heuristic.heuristicSolver(graph, relabel=True)
+    heuristic_solver.set_temporary_tsp_filename("/home/james/temp.tsp")
+    _ = heuristic_solver.solve_problem()
+    edge_frequency_dict = heuristic_solver.count_edges_occurrences()
+
+    return edge_frequency_dict
+    
+
 def get_evrpnl_problem_relaxation_solution(graph, reachability_radius):
     """ Get the evrpnl problem relexation solution """
 
@@ -404,4 +417,5 @@ graph_functions = [
     get_strict_edge_betweenness_centrality,
     get_minimum_arborescence_values,
     get_evrpnl_problem_relaxation_solution,
+    get_heuristic_edge_frequency,
 ]
