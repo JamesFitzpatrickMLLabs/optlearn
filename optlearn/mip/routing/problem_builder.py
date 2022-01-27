@@ -395,7 +395,6 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         variable_sum = self.sum_items(variables)
         name = f"Customer-visiting constraint for node {customer_node}"
         constraint = self.set_constraint(variable_sum, 1, "==", name=name)
-        
         return None
 
     def build_customer_visiting_constraint_directed_multi(self, graph, customer_node):
@@ -677,6 +676,14 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         
         return travel_solutions
 
+    def get_travel_reduced_costs(self):
+        """ Get all identified solutions for the travel variables only """
+
+        travel_variables = self.get_travel_variables_from_storage(self.travel_graph.edges)
+        travel_reduced_costs = self.get_reduced_costs(travel_variables)
+        
+        return travel_reduced_costs
+
     def get_all_travel_edges(self):
         """ Get the travel edges of the graph """
 
@@ -734,8 +741,8 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         self.support_graph = type(self.travel_graph)()
         arcs = self.travel_graph.edges
         solution = self.get_travel_solution()
-        arcs = [arc for (arc, value) in zip(arcs, solution) if value > 0]
-        solution = [value for value in solution if value > 0]
+        arcs = [arc for (arc, value) in zip(arcs, solution) if round(value, 5) > 0]
+        solution = [round(value, 5) for value in solution if round(value, 5) > 0]
         tuples = [(*arc, {"value": value}) for (arc, value) in zip(arcs, solution)]
         
         self.support_graph.add_edges_from(tuples)
