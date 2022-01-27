@@ -93,6 +93,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_station_nodes_departure_pwl_constraints(graph)
         
         self.build_station_nodes_duration_constraints(graph)
+        
         self.build_energy_arrival_departure_constraints(graph)
         self.build_customer_energy_node_tracking_constraints(graph)
         self.build_station_energy_node_tracking_constraints(graph)
@@ -125,13 +126,15 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         self.build_customer_time_arcs_return_constraints(graph)        
         self.build_customer_time_arcs_tracking_constraints(graph)
         self.build_station_time_arcs_tracking_constraints(graph)        
-        self.build_station_time_arcs_return_constraints(graph)
+        self.build_station_time_arcs_return_constraints(graph) # #
         self.build_energy_arcs_return_constraints(graph)
         self.build_time_arcs_return_constraints(graph)
         self.build_time_arcs_leave_constraints(graph)
         self.build_time_arcs_zero_constraints(graph)
         self.build_stations_clone_prime_constraints(graph)
         self.build_energy_valid_ineqaulities(graph)
+        
+        # self.build_stations_duration_valid_inequalities(graph)
         
         return None
         
@@ -1624,10 +1627,11 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
 
         time_variable = self.get_arc_time_variable_from_storage((first_node, second_node))
         travel_variable = self.get_travel_variable_from_storage((first_node, second_node))
+        travel_time = self.get_travel_time(graph, first_node, second_node)
 
         time_limit = self.get_maximum_travel_time()
         
-        lhs = time_variable
+        lhs = time_variable + travel_variable * travel_time
         rhs = travel_variable * time_limit
         constraint_name = f"Time arc zeroing constraint for {first_node} and {second_node}"
         _ = self.set_constraint(lhs, rhs, "<=", constraint_name)
@@ -1645,6 +1649,8 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
                 if other_node != depot_node:
                     self.build_time_arc_return_constraint(graph, other_node, depot_node)
 
+        return None
+                    
     def build_time_arcs_leave_constraints(self, graph):
         """ Make sure there time is always zero when leaving along any arc from a depot """
 
@@ -1656,6 +1662,8 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
                 if other_node != depot_node:
                     self.build_time_arc_leave_constraint(graph, other_node, depot_node)
 
+        return None
+                    
     def build_time_arcs_zero_constraints(self, graph):
         """ Make sure there time is always zero when an arc is not travelled """
 
@@ -1667,6 +1675,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
                 if first_node != second_node:
                     self.build_time_arc_zero_constraint(graph, first_node, second_node)
 
+        return None
                     
     def build_customer_time_arc_tracking_constraint(self, graph, customer_node):
         """ Build a constraint tracking the time along arcs going through the customer """
@@ -1774,17 +1783,57 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         nodes = [node for node in nodes if graph.nodes[node].get("prime_node") != station_node]
         for first_node in nodes:
             for second_node in nodes:
-                if first_node != second_node:
-                    first_energy = self.get_energy_consumption(graph, first_node, station_node)
-                    second_energy = self.get_energy_consumption(graph, station_node, second_node)
+                first_energy = self.get_energy_consumption(graph, first_node, station_node)
+                second_energy = self.get_energy_consumption(graph, station_node, second_node)
+                if first_node == second_node:
+                    third_energy = 0
+                else:
                     third_energy = self.get_energy_consumption(graph, first_node, second_node)
-                    energies.append(first_energy + second_energy + third_energy)
+                energies.append(first_energy + second_energy - third_energy)
         minimum_detour_energy = min(energies)
 
-        return minimum_detour_energy
+        return minimum_detour_energy        
 
-    def get_minimum_needed_station_charge(self, graph, station_node):
+    def get_minimum_station_detour_energy(self, graph, station_node):
         """ Get the minimum needed charge to get the vechicle to the depot again """
+
+        energies = []
+        nodes = [node for node in self.get_nodes(graph) if node != station_node]
+        nodes = [node for node in nodes if graph.nodes[node].get("prime_node") != station_node]
+        for first_node in nodes:
+            for second_node in nodes:
+                if first_node != second_node:
+                    first_energy = self.get_energy_consumption(graph, station_node, first_node)
+                    second_energy = self.get_energy_consumption(graph, first_node, second_node)
+                    third_energy = self.get_energy_consumption(graph, station_node, second_node)
+                    energies.append(first_energy + second_energy - third_energy)
+        minimum_station_detour_energy = min(energies)
+
+        return minimum_station_detour_energy        
+    
+    def get_minimum_needed_station_charge(self, graph, station_node):
+        """ Get the minimum needed charge to get the vehicle to the depot again """
+
+        minimum_detour_energy = self.get_minimum_station_detour_energy(graph, station_node)
+        time_breakpoints = self.get_time_breakpoints(graph, station_node)
+        energy_breakpoints = self.get_energy_breakpoints(graph, station_node)
+
+        beyond_breakpoint = [True for item in energy_breakpoints if minimum_detour_energy >= item]
+        first_index = beyond_breakpoint.index(True)
+        if first_index < len(time_breakpoints) - 1:
+            timing_offset = sum(time_breakpoints[:first_index])
+            timing_gap = time_breakpoints[first_index + 1] - time_breakpoints[first_index]
+            energy_gap = energy_breakpoints[first_index + 1] - energy_breakpoints[first_index]
+            energy_fraction = energy_breakpoints[first_index + 1] - minimum_detour_energy
+            energy_fraction = energy_fraction / energy_gap
+            charging_time = timing_offset + energy_fraction * timing_gap
+        else:
+            charging_time = 0
+
+        return charging_time
+
+    def get_minimum_needed_duration_charge(self, graph, station_node):
+        """ Get the minimum needed charge to get the vehicle to the depot again """
 
         minimum_detour_energy = self.get_minimum_detour_energy(graph, station_node)
         time_breakpoints = self.get_time_breakpoints(graph, station_node)
@@ -1803,7 +1852,7 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             charging_time = 0
 
         return charging_time
-
+    
     def build_station_time_arc_return_constraint(self, graph, station_node, other_node):
         """ Build a constraint making sure that the vehicle has enough time to return """
 
@@ -1811,9 +1860,8 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         time_variable = self.get_arc_time_variable_from_storage((other_node, station_node))
 
         travel_time = self.get_travel_time(graph, other_node, station_node)
-        duration = self.get_minimum_needed_station_charge(graph, station_node)
-        # duration = 0
-        # REPLACE ABOVE WITH FUNCTIONAL EXPRESSION
+        # duration = self.get_minimum_needed_station_charge(graph, station_node)
+        duration = 0
         time_limit = self.get_maximum_travel_time()
         
         for depot_node in self.get_depots(graph):
@@ -1857,18 +1905,21 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
             lhs, rhs = self.get_travel_variable_from_storage((station_node, station_clone)), 0
             constraint_name = f"Clone-prime constraint for {station_node} and {station_clone}"
             _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+            # print(lhs, " == ", rhs)
             lhs = self.get_travel_variable_from_storage((station_clone, station_node))
             constraint_name = f"Clone-prime constraint for {station_clone} and {station_node}"
             _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+            # print(lhs, " == ", rhs)
             for other_clone in station_clones:
                 if other_clone != station_clone:
                     lhs = self.get_travel_variable_from_storage((station_clone, other_clone))
                     constraint_name = f"Clone constraint for {station_clone} and {other_clone}"
                     _ = self.set_constraint(lhs, rhs, "==", constraint_name)
+                    # print(lhs, " == ", rhs)
                     lhs = self.get_travel_variable_from_storage((other_clone, station_clone))
                     constraint_name = f"Clone constraint for {other_clone} and {station_clone}"
                     _ = self.set_constraint(lhs, rhs, "==", constraint_name)
-
+                    # print(lhs, " == ", rhs)
         return None
 
     def build_energy_valid_inequality(self, graph, first_node, second_node):
@@ -1904,6 +1955,32 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
                     self.build_energy_valid_inequality(graph, first_node, second_node)
 
         return None
+
+    def build_station_duration_valid_inequality(self, graph, station_node):
+        """ Build a valid inequality for the given station duration to tighten formulation """
+
+        # minimum_detour_energy = self.get_minimum_detour_energy(graph, station_node)
+        minimum_detour_duration = self.get_minimum_needed_station_charge(graph, station_node)
+        duration_variable = self.get_station_node_duration_variable_from_storage(station_node)
+        outward_arcs = self.get_outward_incident_arcs(graph, station_node)
+        outward_travel_variables = self.get_travel_variables_from_storage(outward_arcs)
+
+        lhs = duration_variable
+        rhs = minimum_detour_duration * sum(outward_travel_variables)
+        constraint_name = f"Valid duration inequality for station {station_node}"
+        _ = self.set_constraint(lhs, rhs, ">=", constraint_name)
+
+        return None
+
+    def build_stations_duration_valid_inequalities(self, graph):
+        """ Build all constraints preventing travel between station clones """
+
+        station_nodes = self.get_stations(graph)
+        for station_node in station_nodes:
+            self.build_station_duration_valid_inequality(graph, station_node)
+
+        return None
+
         
     def build_stations_clone_prime_constraints(self, graph):
         """ Build all constraints preventing travel between station clones """
@@ -1920,10 +1997,10 @@ class evrpnlProblemBuilder(problem_builder.basicProblemBuilder, piecewise_builde
         inward_incident_edges = self.get_inward_incident_arcs(graph, station_node)
         outward_incident_edges = self.get_outward_incident_arcs(graph, station_node)
         for inward_edge in inward_incident_edges:
-            print(station_node, inward_edge, "inward")
+            # print(station_node, inward_edge, "inward")
             self.build_arc_travel_variable(inward_edge[0], inward_edge[1])
         for outward_edge in outward_incident_edges:
-            print(station_node, outward_edge, "outward")
+            # print(station_node, outward_edge, "outward")
             self.build_arc_travel_variable(outward_edge[0], outward_edge[1])
 
         return None
