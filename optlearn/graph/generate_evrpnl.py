@@ -252,12 +252,14 @@ def generate_reachable_coordinate(coordinate, reachability_radius):
     """ Generate a new coordinate that is reachable from the given coordinate """
 
     x_limits = (coordinate[0] - reachability_radius, coordinate[0] + reachability_radius)
+    x_limits = tuple([float(np.clip(item, 0, 120)) for item in x_limits])
     x_ordinate = np.random.uniform(*x_limits)
     y_limit = np.sqrt(reachability_radius ** 2 - (coordinate[0] - x_ordinate) ** 2)
     y_limits = (coordinate[1] - y_limit, coordinate[1] + y_limit)
+    y_limits = tuple([float(np.clip(item, 0, 120)) for item in y_limits])
     y_ordinate = np.random.uniform(*y_limits)
     coordinate = [x_ordinate, y_ordinate]
-
+    
     return coordinate
 
 
@@ -265,9 +267,11 @@ def generate_strictly_reachable_coordinate(coordinate, reachability_radius):
     """ Generate a new coordinate that is strictly reachable from the given coordinate """
 
     x_limits = (coordinate[0] - (reachability_radius/3), coordinate[0] + (reachability_radius/3))
+    x_limits = tuple([float(np.clip(item, 0, 120)) for item in x_limits])
     x_ordinate = np.random.uniform(*x_limits)
     y_limit = np.sqrt((reachability_radius/3) ** 2 - (coordinate[0] - x_ordinate) ** 2)
     y_limits = (coordinate[1] - y_limit, coordinate[1] + y_limit)
+    y_limits = tuple([float(np.clip(item, 0, 120)) for item in y_limits])
     y_ordinate = np.random.uniform(*y_limits)
     coordinate = [x_ordinate, y_ordinate]
 
