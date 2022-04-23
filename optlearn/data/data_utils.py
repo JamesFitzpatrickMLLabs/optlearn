@@ -4,12 +4,12 @@ import joblib
 import numpy as np
 import networkx as nx
 
-from optlearn import io_utils
 from optlearn import graph_utils
 
 from optlearn.feature import features
 from optlearn.feature import feature_utils
 from optlearn.data import compute_solutions
+from optlearn.io.tsp import tsplib_utils
 
 from sklearn.model_selection import train_test_split
 
@@ -109,7 +109,7 @@ class createTrainingFeatures(feature_utils.buildFeatures):
     def load_object(self, problem_fname):
         """ Load the problem file and store it as a hidden attribute """
 
-        self._object = io_utils.optObject()
+        self._object = tsplib_utils.optObject()
         self._object.read_problem_from_file(problem_fname)
         self._graph = self._object.get_graph()
         
@@ -124,7 +124,7 @@ class createTrainingFeatures(feature_utils.buildFeatures):
     def compute_labels_from_problem(self, problem_fname):
         """ Using the problem file, compute the labels """
         
-        object = io_utils.optObject().read_problem_from_file(problem_fname)
+        object = tsplib_utils.optObject().read_problem_from_file(problem_fname)
         graph = object.get_graph()
 
         return compute_solutions.get_all_optimal_tsp_solutions(graph)
@@ -357,13 +357,13 @@ class dataLoader():
     def load_features(self, feature_fnames):
         """ Load the features """
 
-        features = [io_utils.load_npy_file(fname) for fname in feature_fnames]
+        features = [tsplib_utils.load_npy_file(fname) for fname in feature_fnames]
         return np.stack(features, axis=1)
 
     def load_labels(self, label_fname):
         """ Load the labels """
 
-        return io_utils.load_npy_file(label_fname)
+        return tsplib_utils.load_npy_file(label_fname)
 
     def load_pair(self, pair):
         """ Load the feature-label pair """
