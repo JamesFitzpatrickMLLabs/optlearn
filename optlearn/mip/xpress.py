@@ -71,7 +71,7 @@ def set_edge_objective(problem, variable_dict, graph, perturb=False):
     problem.setObjective(objective)
 
 
-def set_constraint(problem, lhs, rhs, operator):
+def set_constraint(problem, lhs, rhs, operator, name=None):
     """ Set a constraint for the given problem """
 
     problem.addConstraint(mip_utils._operators[operator](lhs, rhs))
