@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from optlearn import io_utils
+from optlearn.io import utils
 from optlearn import graph_utils
 
 
