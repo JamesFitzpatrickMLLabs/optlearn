@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from optlearn import io_utils
 from optlearn import plotting
 
+from optlearn.io import utils
 from optlearn.mip import mip_model
 
 
