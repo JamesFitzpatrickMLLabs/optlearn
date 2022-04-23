@@ -3,7 +3,7 @@ import random
 
 import mip as mp
 import numpy as np
-# import xpress as xp
+import xpress as xp
 import networkx as nx
 
 from itertools import product
@@ -13,20 +13,20 @@ from pyscipopt import SCIP_EVENTTYPE
 from optlearn import graph_utils
 from optlearn.mip import mip_utils
 from optlearn.mip import constraints
-# from optlearn.mip import xpress
+from optlearn.mip import xpress
 from optlearn.mip import coinor
 from optlearn.mip import scip
 
 
 _solver_modules = {
-    # "xpress": xpress,
+    "xpress": xpress,
     "coinor": coinor,
     "scip": scip,
     }
 
 
 _solver_funcs = {
-    # "xpress": xpress._funcs,
+    "xpress": xpress._funcs,
     "coinor": coinor._funcs,
     "scip": scip._funcs,
 }
@@ -296,31 +296,36 @@ class tspProblem():
         """ Get all nonzero variable names from the LP solution """
 
         values, names = self.get_varvals(), self.get_varnames()
-        return [name for (value, name) in zip(values, names) if (value > 0 and prefix in name)]
+        values = [round(item, 8) for item in values]
+        return [name for (value, name) in zip(values, names) if (value > 0.01 and prefix in name)]
 
     def get_solution_varnames(self, prefix="x"):
         """ Get all nonzero variable names from the LP solution """
 
         values, names = self.get_solution(), self.get_varnames()
-        return [name for (value, name) in zip(values, names) if (value == 1 and prefix in name)]
+        values = [round(item, 8) for item in values]
+        return [name for (value, name) in zip(values, names) if (value > 0.99 and prefix in name)]
 
     def get_unit_varnames(self, prefix="x"):
         """ Get all nonzero variable names from the LP solution """
 
         values, names = self.get_varvals(), self.get_varnames()
-        return [name for (value, name) in zip(values, names) if (value == 1 and prefix in name)]
+        values = [round(item, 8) for item in values]
+        return [name for (value, name) in zip(values, names) if (value > 0.99 and prefix in name)]
 
     def get_nonzero_varvals(self, prefix="x"):
         """ Get all nonzero variable values from the LP solution """
 
         values, names = self.get_varvals(), self.get_varnames()
-        return [value for (value, name) in zip(values, names) if (value > 0 and prefix in name)]
+        values = [round(item, 8) for item in values]
+        return [value for (value, name) in zip(values, names) if (value > 0.01 and prefix in name)]
 
     def get_unit_varvals(self, prefix="x"):
         """ Get all unit variable values from the LP solution """
 
         values, names = self.get_varvals(), self.get_varnames()
-        return [value for (value, name) in zip(values, names) if (value >= 0.99 and prefix in name)]
+        values = [round(item, 8) for item in values]
+        return [value for (value, name) in zip(values, names) if (value > 0.99 and prefix in name)]
 
     def get_solution(self):
         """ Get the current solution """
