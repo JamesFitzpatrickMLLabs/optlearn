@@ -7,10 +7,9 @@
       "fe",
       "ff",
       "fg",
-      "fi",
-      "fj"
+      "fi"
    ],
-   "solution_dir":"solutions",
+   "solution_dir":"reinforcement_solutions",
    "weight_dir":"sample_weights",
    "train_test_val_split":{
       "train":"1",
