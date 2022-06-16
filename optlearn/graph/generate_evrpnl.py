@@ -154,7 +154,7 @@ def build_evrpnl_graph():
     return graph
 
 
-def generate_depot_coordinate_attributes(x_limits=(0,100), y_limits=(0,100)):
+def generate_depot_coordinate_attributes(x_limits=(30,90), y_limits=(30,90)):
     """ Generate a coordinate for the depot """
 
     x_ordinate = round(np.random.uniform(*x_limits), 2)
@@ -564,7 +564,14 @@ class generateProblem():
         """ Add a depot to the graph """
 
         cs_type = self.select_random_cs_type()
-        graph = generate_depot(graph, self.x_limits, self.y_limits, cs_type)
+        graph = generate_depot(
+            graph,
+            # self.x_limits,
+            # self.y_limits,
+            (30, 90),
+            (30, 90),
+            cs_type
+        )
 
         return graph
 
