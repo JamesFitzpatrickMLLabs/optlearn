@@ -680,9 +680,10 @@ class basicProblemBuilder(mip_wrapper.mipWrapper):
         """ Get all identified solutions for the travel variables only """
 
         travel_variables = self.get_travel_variables_from_storage(self.travel_graph.edges)
-        travel_reduced_costs = self.get_reduced_costs(travel_variables)
+        travel_solutions = [self.get_reduced_costs(travel_variables)
+                            for solution in solutions]
         
-        return travel_reduced_costs
+        return travel_solutions
 
     def get_all_travel_edges(self):
         """ Get the travel edges of the graph """
