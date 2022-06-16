@@ -286,8 +286,36 @@ class mipWrapper():
 
         return None
 
+    def fix_continuous_variable(self, variable):
+        """ Fix a continuous variable to its lower bound """
+
+        _ = self._functions["fix_continuous_variable"](self.problem, variable)
+
+        return None
+
+    def fix_continuous_variables(self, variables):
+        """ Fix an iterable of continuous variables to their lower bound """
+
+        _ = self._functions["fix_continuous_variables"](self.problem, variables)
+
+        return None
+    
+    def release_continuous_variable(self, variable, upper_bound):
+        """ Release a continuous variable from its lower bound """
+
+        _ = self._functions["release_continuous_variable"](self.problem, variable, upper_bound)
+
+        return None
+
+    def release_continuous_variables(self, variables, upper_bound):
+        """ Release an iterable of continuous variables from their lower bound """
+
+        _ = self._functions["release_continuous_variables"](self.problem, variables, upper_bound)
+
+        return None
+
     def release_binary_variable(self, variable):
-        """ Release a binary variable from its lower bound """
+        """ Release a continuoubinary variable from its lower bound """
 
         _ = self._functions["release_binary_variable"](self.problem, variable)
 
@@ -300,6 +328,7 @@ class mipWrapper():
 
         return None
 
+    
     def relax_binary_variable(self, variable):
         """ Relax a binary variable """
 
