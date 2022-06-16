@@ -445,7 +445,6 @@ def count_problem_variables(problem):
 def fix_binary_variable(problem, variable):
     """ Fix the given binary variable to zero """
 
-    print(variable, type(variable))
     variable_index = problem.getIndex(variable)
     problem.chgbounds([variable_index], ["U"], [0])
 
@@ -457,6 +456,24 @@ def fix_binary_variables(problem, variables):
 
     for variable in variables:
         _ = fix_binary_variable(problem, variable)
+    
+    return None
+
+
+def fix_continuous_variable(problem, variable):
+    """ Fix the given continuous variable to zero """
+
+    variable_index = problem.getIndex(variable)
+    problem.chgbounds([variable_index], ["U"], [0])
+
+    return None
+
+
+def fix_continuous_variables(problem, variables):
+    """ Fix the given continuous variables to zero """
+
+    for variable in variables:
+        _ = fix_continuous_variable(problem, variable)
     
     return None
 
@@ -477,6 +494,32 @@ def release_binary_variables(problem, variables):
         _ = release_binary_variable(problem, variable)
     
     return None
+
+
+def release_continuous_variable(problem, variable, upper_bound):
+    """ Release the given continuous variable, so take values uo to the bound  """
+
+    variable_index = problem.getIndex(variable)
+    problem.chgbounds([variable_index], ["U"], [upper_bound])
+
+    return None
+
+
+def release_continuous_variables(problem, variables, upper_bound):
+    """ Release the given binary variables, so that they can be nonzero """
+
+    if type(upper_bound) == int:
+        upper_bound = [upper_bound] * len(variables)
+
+    if len(upper_bound) != len(variables):
+        _warning = "Can't release continuous variables, must have as many bounds as variables!"
+        raise ValueError(_warning)
+    
+    for (variable, upper_bound) in variables:
+        _ = release_binary_variable(problem, variable)
+    
+    return None
+
 
 def relax_binary_variable(problem, variable):
     """ Release the given binary variable, so that it can be non-integral """
@@ -542,7 +585,10 @@ _functions = {
     "fix_binary_variables": fix_binary_variables,
     "release_binary_variable": release_binary_variable,
     "release_binary_variables": release_binary_variables,
+    "fix_continuous_variable": fix_continuous_variable,
+    "fix_continuous_variables": fix_continuous_variables,
+    "release_continuous_variable": release_continuous_variable,
+    "release_continuous_variables": release_continuous_variables,
     "relax_binary_variable": relax_binary_variable,
     "relax_binary_variables": relax_binary_variables,
-
 }
