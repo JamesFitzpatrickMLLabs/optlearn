@@ -81,15 +81,19 @@ def setup_model(model, model_param_json_path=None):
         if "class_weight" in parameters:
             parameters["class_weight"] = {key: float(value) for (key, value) in
                                           parameters["class_weight"].items()}
-            for key in parameters["class_weight"].keys():
-                parameters["class_weight"][int(key)] = parameters["class_weight"].pop(key)
+            print(parameters)
+            for key in list(parameters["class_weight"].keys()):
+                parameters["class_weight"][int(key)] = parameters["class_weight"][key]
+                parameters["class_weight"].pop(key)
     except Exception as exception:
         print("Uknown error trying to decode the class weights!")
+        print(exception)
         raise exception        
     try:
         model = model(**parameters)
     except Exception as exception:
         print("Unknown error trying to build the model with the given parameters!")
+        print(exception)
         raise exception
 
     return model
