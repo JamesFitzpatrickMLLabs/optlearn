@@ -1,7 +1,6 @@
 import copy
 import time
 import hashlib
-import signal
 
 import matplotlib.pyplot as plt
 
@@ -88,7 +87,7 @@ problem_hash.update(str(time.time()).encode("utf-8"))
 problem_hash = problem_hash.hexdigest()[:10]
 
 generator = generate_evrpnl.generateProblem()
-graph = generator.generate_random_problem(number_of_stations=3, number_of_customers=10)
+graph = generator.generate_random_problem(number_of_stations=2, number_of_customers=6)
 graph = graph.to_directed()
 
 # problem_filename = "/home/james/transfer/95d986f526.pkl"
