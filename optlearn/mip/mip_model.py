@@ -581,23 +581,51 @@ class vrpProblem():
 
         if self.formulation == "dantzig":
             self.set_edge_variables(graph)
-            return None
+
+        return None
 
     def add_variables(self):
         """ Add the created variables to the problem """
 
         self._funcs["add_variables"](self.problem, self.variable_dict.values())
 
+        return None
+
     def set_objective(self, graph):
         """ Set the objective function """
 
         print("Setting objective!")
         if self.formulation == "dantzig":
-            self._funcs["edge_objective"](self.problem,
-                                          self.variable_dict,
-                                          graph, self.perturb)
-            return None
+            self._funcs["edge_objective"](
+                self.problem,
+                self.variable_dict,
+                graph, self.perturb
+            )
         print("No objective function defined!")
+        
+        return None
+        
+    def fix_binary_variable(self, variable):
+        """ Fix the given binary variable to zero """
+
+        self._funcs["fix_binary_variable"](self.problem, variable)
+
+        return None
+
+    def fix_binary_variables(self, variables):
+        """ Fix the given binary variables to zero """
+
+        self._funcs["fix_binary_variables"](self.problem, variables)
+
+        return None
+
+    def fix_edges(self, edges):
+        """ Fix the variables associated with the given edges """
+
+        fixing_variables = self.get_variables(self, edges)
+        self.fix_binary_variables(fixing_variables)
+
+        return None
 
     def get_variable_tuple(self, string):
         """ Get the (vertex_a, vertex_b) integer tuple from a variable name """
