@@ -10,6 +10,7 @@ from optlearn.feature import features
 from optlearn.feature import feature_utils
 from optlearn.data import compute_solutions
 from optlearn.io.tsp import tsplib_utils
+from optlearn.io.npy import npy_io
 
 from sklearn.model_selection import train_test_split
 
@@ -357,13 +358,13 @@ class dataLoader():
     def load_features(self, feature_fnames):
         """ Load the features """
 
-        features = [tsplib_utils.load_npy_file(fname) for fname in feature_fnames]
+        features = [npy_io.load_npy_file(fname) for fname in feature_fnames]
         return np.stack(features, axis=1)
 
     def load_labels(self, label_fname):
         """ Load the labels """
 
-        return tsplib_utils.load_npy_file(label_fname)
+        return npy_io.load_npy_file(label_fname)
 
     def load_pair(self, pair):
         """ Load the feature-label pair """
