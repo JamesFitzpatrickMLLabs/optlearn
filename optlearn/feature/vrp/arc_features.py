@@ -345,11 +345,62 @@ def get_evrpnl_problem_relaxation_solution(graph, reachability_radius):
 
     return solution
 
+
+def get_evrpnl_problem_relaxation_solution(graph, reachability_radius):
+    """ Get the evrpnl problem relexation solution """
+
+    customers = feature_utils.get_customers(graph)
+    solver = evrpnl_duplication.duplicationSolver(
+        graph, iteration_limit=len(customers), time_limit=300)
+    solver.lpsolve_problem(reachability_radius)
+    solution = solver.get_primed_travel_solution_dict()
+
+    return solution
+
     
 def get_evrpnl_problem_relaxation_reduced_costs(graph):
     """ Get the evrpnl problem relexation solution """
 
     return None
+
+
+def get_arc_type(graph, arc):
+    """ Get the type of the given arc """
+
+    depots = feature_utils.get_depots(graph)
+    stations = feature_utils.get_stations(graph)
+    customers = feature_utils.get_customers(graph)
+
+    if arc[0] in depots:
+        if arc[1] in depots:
+            return [-1, -1]
+        if arc[1] in stations:
+            return [-1, 0]
+        if arc[1] in customers:
+            return [-1, 1]
+    if arc[0] in stations:
+        if arc[1] in depots:
+            return [0, -1]
+        if arc[1] in stations:
+            return [0, 0]
+        if arc[1] in customers:
+            return [0, 1]
+    if arc[0] in customers:
+        if arc[1] in depots:
+            return [1, -1]
+        if arc[1] in stations:
+            return [1, 0]
+        if arc[1] in customers:
+            return [1, 1]
+
+
+def get_arc_types(graph, arcs=None):
+    """ Get the types of all the arcs """
+
+    all_arcs = arcs or graph_utils.get_all_edges(graph)
+    arc_types = {arc: get_arc_type(graph, arc) for arc in all_arcs}
+
+    return arc_types
 
     
 def compute_arc_features(graph, edge, reachability_radius):
@@ -417,5 +468,5 @@ graph_functions = [
     get_strict_edge_betweenness_centrality,
     get_minimum_arborescence_values,
     get_evrpnl_problem_relaxation_solution,
-    get_heuristic_edge_frequency,
-]
+    # get_heuristic_edge_frequency,
+] 
