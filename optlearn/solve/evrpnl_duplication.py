@@ -354,6 +354,7 @@ class duplicationSolver():
         """ Check the remaining time we have for solving """
 
         remaining_time = self.time_limit - self._check_time()
+        remaining_time = min([0, abs(remaining_time)])
 
         return remaining_time
         
@@ -846,6 +847,36 @@ class duplicationSolver():
 
         return prime_solution_dict
 
+    def get_primed_travel_reduced_cost_dict(self, aggregator=np.mean):
+        """ Get the travel reduced cost dict, but with the edges in their prime form """
+
+        stations = feature_utils.get_stations(self.working_graph)
+        prime_solution_dict = {}
+        solution_dict = self.get_travel_reduced_cost_dict()
+        for edge in solution_dict.keys():
+            value = solution_dict[edge]
+            if edge[0] in stations:
+                if self.working_graph.nodes[edge[0]].get("prime_node") is not None:
+                    first_node = self.working_graph.nodes[edge[0]].get("prime_node")
+                else:
+                    first_node = edge[0]
+            else:
+                first_node = edge[0]
+            if edge[1] in stations:
+                if self.working_graph.nodes[edge[1]].get("prime_node") is not None:
+                    second_node = self.working_graph.nodes[edge[1]].get("prime_node")
+                else: second_node = edge[1]
+            else:
+                second_node = edge[1]
+            if (first_node, second_node) not in prime_solution_dict.keys():
+                prime_solution_dict[(first_node, second_node)] = [value]
+            else:
+                prime_solution_dict[(first_node, second_node)].append(value)
+        for edge in prime_solution_dict.keys():
+            prime_solution_dict[edge] = aggregator(prime_solution_dict[edge])
+
+        return prime_solution_dict
+    
     def get_objective_value(self):
         """ Get the incumbent objective value of the current problem """
 
