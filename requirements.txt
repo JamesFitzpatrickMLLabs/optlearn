@@ -1,6 +1,6 @@
 tsplib95==0.7.1
 joblib==0.15.1
-numpy==1.19.0
+numpy==1.22.0
 networkx==2.4
 cython==0.29.20
 xpress>=8.11.0
